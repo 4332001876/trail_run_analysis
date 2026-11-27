@@ -9,7 +9,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "src")
 OUT = os.path.join(HERE, "越野跑轨迹分析.html")
-JS_FILES = ["core.js", "charts.js", "map2d.js", "map3d.js", "app.js"]  # 顺序即依赖顺序
+JS_FILES = ["core.js", "charts.js", "show.js", "show3d.js", "map2d.js", "map3d.js", "app.js"]  # 顺序即依赖顺序
 
 
 def read(name):

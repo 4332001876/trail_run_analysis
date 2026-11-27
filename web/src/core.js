@@ -1226,8 +1226,196 @@ var TR = (function () {
     return s || '未命名';
   }
 
+  // ---------------- 赛道条（整场压成一条）和回放 ----------------
+  /** 逐点累计爬升（和 trackStats 用同一个 3 米回滞阈值），回放时显示已爬升 / 剩余爬升 */
+  function gainPrefix(tr) {
+    var n = tr.n, out = new Float64Array(n), g = 0, ref = tr.smooth[0], i, d;
+    for (i = 1; i < n; i++) {
+      d = tr.smooth[i] - ref;
+      if (d >= HYST) { g += d; ref = tr.smooth[i]; }
+      else if (d <= -HYST) ref = tr.smooth[i];
+      out[i] = g;
+    }
+    return out;
+  }
+
+  /** 把整场按里程等宽切成 nb 格，给「赛道条」用。cost 是 fitCostCurve 的结果，传 null 时按 Tobler 归一化。
+   *  返回 { total, med, nb, bins: [{ d0, d1, e0, e1, grd, spd, dev, stop }] }：
+   *    d0/d1 起止里程（米）；e0/e1 这一格里海拔的最低、最高值（米，没有海拔数据时 null）；
+   *    grd 平均坡度（%）；spd 移动中的平均速度（km/h，没有时间数据时 null）；
+   *    dev = log2(这一格的速度 ÷ 同坡度的平时水平 ÷ 全场的中位水平)，+1 就是比平时快一倍；
+   *    stop 停留时间占这一格全部时间的比例（0~1）。 */
+  function fingerStrip(tr, cost, nb) {
+    nb = Math.max(8, Math.min(400, Math.round(nb || 240)));
+    var total = tr.cum[tr.n - 1], out = [], W = total / nb, i, k, b, d, dt;
+    for (k = 0; k < nb; k++) out.push({ d0: k * W, d1: (k + 1) * W, e0: Infinity, e1: -Infinity, d: 0, dt: 0, dm: 0, dtm: 0, stop: 0, gs: 0, gn: 0 });
+    if (!(total > 0)) return { total: 0, med: 1, nb: nb, bins: out };
+    var pm = tr.pm || pointMetrics(tr);
+    function binOf(m) { var k2 = Math.floor(m / W); return k2 < 0 ? 0 : (k2 >= nb ? nb - 1 : k2); }
+    for (i = 1; i < tr.n; i++) {
+      b = out[binOf((tr.cum[i] + tr.cum[i - 1]) / 2)];
+      d = tr.cum[i] - tr.cum[i - 1];
+      dt = tr.hasTime ? tr.t[i] - tr.t[i - 1] : 0;
+      b.d += d;
+      b.gs += pm.grd[i] * d; b.gn += d;
+      if (dt > 0) {
+        b.dt += dt;
+        if (d / dt > MOVE_V) { b.dm += d; b.dtm += dt; } else b.stop += dt;
+      }
+    }
+    if (tr.hasEle) {
+      for (i = 0; i < tr.n; i++) {
+        b = out[binOf(tr.cum[i])];
+        if (tr.smooth[i] < b.e0) b.e0 = tr.smooth[i];
+        if (tr.smooth[i] > b.e1) b.e1 = tr.smooth[i];
+      }
+    }
+    var q = [];
+    for (k = 0; k < nb; k++) {
+      b = out[k];
+      b.grd = b.gn > 0 ? b.gs / b.gn : 0;
+      b.spd = b.dtm > 20 && b.dm > 20 ? b.dm / b.dtm * 3.6 : null;
+      b.stop = b.dt > 0 ? b.stop / b.dt : 0;
+      b.e0 = b.e0 === Infinity ? null : b.e0;
+      b.e1 = b.e1 === -Infinity ? null : b.e1;
+      if (b.spd !== null) q.push(b.spd / (cost ? cost.f(b.grd) : tobler(b.grd)));
+    }
+    var med = q.length ? median(q) : 1;
+    for (k = 0; k < nb; k++) {
+      b = out[k];
+      b.dev = b.spd === null || !(med > 0) ? null : Math.log(b.spd / (cost ? cost.f(b.grd) : tobler(b.grd)) / med) / Math.LN2;
+    }
+    return { total: total, med: med, nb: nb, bins: out };
+  }
+
+  /** 回放：按全程进度（0~1）取一点。有时间按时间取，没有时间按里程取。
+   *  返回 { i, u, d, t, ele, hr, spd, grd }，u 是 i 到 i+1 之间的插值比例（画点时在两点间插）。 */
+  function replayAt(tr, frac) {
+    var n = tr.n, f = frac < 0 ? 0 : (frac > 1 ? 1 : frac), key = tr.hasTime ? tr.t : tr.cum;
+    var tot = key[n - 1];
+    if (!(tot > 0)) return null;
+    var target = f * tot, lo = 0, hi = n - 1, mid;
+    while (lo < hi - 1) { mid = (lo + hi) >> 1; if (key[mid] <= target) lo = mid; else hi = mid; }
+    var span = key[hi] - key[lo], u = span > 0 ? (target - key[lo]) / span : 0;
+    if (u < 0) u = 0; else if (u > 1) u = 1;
+    var pm = tr.pm || pointMetrics(tr);
+    return {
+      i: lo, u: u,
+      d: tr.cum[lo] + (tr.cum[hi] - tr.cum[lo]) * u,
+      t: tr.hasTime ? tr.t[lo] + (tr.t[hi] - tr.t[lo]) * u : null,
+      ele: tr.smooth[lo] + (tr.smooth[hi] - tr.smooth[lo]) * u,
+      hr: tr.hr[lo] > 0 ? Math.round(tr.hr[lo] + ((tr.hr[hi] > 0 ? tr.hr[hi] : tr.hr[lo]) - tr.hr[lo]) * u) : null,
+      spd: pm.spd[lo] + (pm.spd[hi] - pm.spd[lo]) * u,
+      grd: pm.grd[lo]
+    };
+  }
+
+  /** 里程进度 → 时间进度。回放的光标按时间走，赛道条的横轴是里程，
+   *  点赛道条时要换算一下，光标才会落在手指底下。没有时间数据时原样返回。 */
+  function timeFrac(tr, dfrac) {
+    var n = tr.n, f = dfrac < 0 ? 0 : (dfrac > 1 ? 1 : dfrac), total = tr.cum[n - 1], tot = tr.t[n - 1];
+    if (!tr.hasTime || !(tot > 0) || !(total > 0)) return f;
+    var target = f * total, lo = 0, hi = n - 1, mid;
+    while (lo < hi - 1) { mid = (lo + hi) >> 1; if (tr.cum[mid] <= target) lo = mid; else hi = mid; }
+    var span = tr.cum[hi] - tr.cum[lo], u = span > 0 ? (target - tr.cum[lo]) / span : 0;
+    return (tr.t[lo] + (tr.t[hi] - tr.t[lo]) * u) / tot;
+  }
+
+  /** 把轨迹投到本地平面，给 3D 回放用。和 compare/same_route.py 画 3D 图用的是同一套算法：
+   *  x = (经度 − 起点经度) × 111.32 × cos(起点纬度)，y = (纬度 − 起点纬度) × 111.32，单位公里。
+   *  返回按 maxPts 抽稀后的 x / y（公里）、z（海拔米，没海拔时是 0）、d（里程进度 0~1）。 */
+  function localKm(tr, maxPts) {
+    var n = tr.n, step = Math.max(1, Math.ceil(n / (maxPts || 1200)));
+    var kx = 111.32 * Math.cos(rad(tr.lat[0])), ky = 111.32, lon0 = tr.lon[0], lat0 = tr.lat[0];
+    var total = tr.cum[n - 1], x = [], y = [], z = [], d = [], i;
+    function add(k) {
+      x.push((tr.lon[k] - lon0) * kx);
+      y.push((tr.lat[k] - lat0) * ky);
+      z.push(tr.hasEle ? tr.smooth[k] : 0);
+      d.push(total > 0 ? tr.cum[k] / total : 0);
+    }
+    for (i = 0; i < n; i += step) add(i);
+    if ((n - 1) % step) add(n - 1);
+    return { x: x, y: y, z: z, d: d, n: x.length, kx: kx, ky: ky };
+  }
+
+  /** 第一人称专用的平滑路线：在本地平面上按里程 ±radiusM 米做滑动平均。
+   *  手表录的轨迹左右有几米的抖动，贴着地面看会放大成镜头乱晃，平均一下就没有了。
+   *  返回 { x, y, z, d, n }（公里 / 米 / 里程进度），和 localKm 的字段一一对应。 */
+  function smoothTrack(tr, maxPts, radiusM) {
+    var lk = localKm(tr, maxPts || 1400), r = radiusM === undefined ? 30 : radiusM;
+    var total = tr.cum[tr.n - 1], n = lk.n, out = { x: [], y: [], z: [], d: lk.d, n: n };
+    var a = 0, b = 0, i;
+    for (i = 0; i < n; i++) {
+      var target = lk.d[i] * total;
+      while (a < n - 1 && lk.d[a] * total < target - r) a++;
+      if (b < i) b = i;
+      while (b < n - 1 && lk.d[b + 1] * total <= target + r) b++;
+      var sx = 0, sy = 0, sz = 0, c = 0, k;
+      for (k = a; k <= b; k++) { sx += lk.x[k]; sy += lk.y[k]; sz += lk.z[k]; c++; }
+      out.x.push(c ? sx / c : lk.x[i]);
+      out.y.push(c ? sy / c : lk.y[i]);
+      out.z.push(c ? sz / c : lk.z[i]);
+    }
+    return out;
+  }
+
+  /** 在平滑后的路线上按里程进度取一点（相邻两点之间插值） */
+  function pathAt(path, frac) {
+    var n = path.n, d = path.d, lo = 0, hi = n - 1, mid;
+    while (lo < hi - 1) { mid = (lo + hi) >> 1; if (d[mid] <= frac) lo = mid; else hi = mid; }
+    // 轨迹里偶尔有重复的点（同一个位置记了两笔），这里的里程进度是平的；
+    // 碰到「跨度为 0」的格子就往后找一个有跨度的，不然位置会卡住一拍再跳过去
+    while (hi < n - 1 && !(d[hi] - d[lo] > 0) && d[hi] <= frac) hi++;
+    var span = d[hi] - d[lo], u = span > 0 ? (frac - d[lo]) / span : 0;
+    u = u < 0 ? 0 : (u > 1 ? 1 : u);
+    return { x: path.x[lo] + (path.x[hi] - path.x[lo]) * u,
+      y: path.y[lo] + (path.y[hi] - path.y[lo]) * u,
+      z: path.z[lo] + (path.z[hi] - path.z[lo]) * u };
+  }
+
+  /** 第一人称相机的平滑：给定这一帧的里程进度和过去的时间，算出相机该在哪、朝哪看。
+   *  位置按 0.30 秒的时间常数低通，前进方向因此也一起被抹平；朝向按 0.35 秒低通。
+   *  cam 是上一帧的状态（第一次传 null 即可），返回同一个对象。
+   *  跳转（拖赛道条）时位置差得太多，直接跟过去，不会拖着慢慢飘。 */
+  function followStep(cam, path, frac, totalM, dt) {
+    cam = cam || {};
+    var tp = pathAt(path, frac);
+    var head = pathAt(path, Math.min(1, frac + 1000 / Math.max(1, totalM)));
+    dt = dt > 0 ? dt : 0.016;
+    var kp = 1 - Math.exp(-dt / 0.30);
+    if (!cam.eye || Math.abs(tp.x - cam.eye.x) + Math.abs(tp.y - cam.eye.y) > 0.5) {
+      cam.eye = { x: tp.x, y: tp.y, z: tp.z };
+    } else {
+      cam.eye.x += (tp.x - cam.eye.x) * kp;
+      cam.eye.y += (tp.y - cam.eye.y) * kp;
+      cam.eye.z += (tp.z - cam.eye.z) * kp;
+    }
+    var ang = Math.atan2(head.y - tp.y, head.x - tp.x), ka = 1 - Math.exp(-dt / 0.80);
+    if (cam.ang === undefined) { cam.ang = ang; cam.ele = cam.eye.z; cam.aheadEle = head.z; }
+    else {
+      var d = ang - cam.ang;
+      while (d > Math.PI) d -= 2 * Math.PI;
+      while (d < -Math.PI) d += 2 * Math.PI;
+      cam.ang += d * ka;
+      cam.ele += (cam.eye.z - cam.ele) * ka;
+      cam.aheadEle += (head.z - cam.aheadEle) * ka;
+    }
+    return cam;
+  }
+
+  /** 画路线图用的抽稀点：墨卡托归一化坐标 + 对应的里程进度，最多约 maxPts 个点 */
+  function routeShape(tr, maxPts) {
+    var n = tr.n, step = Math.max(1, Math.ceil(n / (maxPts || 900))), xs = [], ys = [], fr = [], i, total = tr.cum[n - 1];
+    for (i = 0; i < n; i += step) { xs.push(worldX(tr.lon[i])); ys.push(worldY(tr.lat[i])); fr.push(total > 0 ? tr.cum[i] / total : 0); }
+    if (fr[fr.length - 1] < 1) { xs.push(worldX(tr.lon[n - 1])); ys.push(worldY(tr.lat[n - 1])); fr.push(1); }
+    return { n: xs.length, x: xs, y: ys, fr: fr };
+  }
+
   return {
     MOVE_V: MOVE_V, MATCH_R: MATCH_R, BUCKETS: BUCKETS,
+    gainPrefix: gainPrefix, fingerStrip: fingerStrip, replayAt: replayAt, routeShape: routeShape, timeFrac: timeFrac, localKm: localKm, smoothTrack: smoothTrack,
+    pathAt: pathAt, followStep: followStep,
     haversine: haversine, fmtHms: fmtHms, fmtPace: fmtPace, median: median,
     parseGpx: parseGpx, parseTcx: parseTcx, parseTrackFile: parseTrackFile, buildTrack: buildTrack, movingTime: movingTime,
     splits: splits, gradeSamples: gradeSamples, bucketStats: bucketStats,

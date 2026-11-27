@@ -11,6 +11,9 @@ legacy/*.png
 # 浏览器测试留下的 Chrome 配置目录
 web/tests/profile-*
 
+# 对比测试用的参考数据，由 dump_reference.py 现算
+web/tests/ref/
+
 # Python 缓存
 __pycache__/
 *.pyc

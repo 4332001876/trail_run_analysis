@@ -17,6 +17,8 @@ function TRMap3D(root, hooks) {
   var dead = false, raf = 0, W = 0, H = 0, gen = 0, texGen = 0;
   var src = null, entries = [], regionKey = '', showStops = true, exag = 1.5, quality = 'std';
   var scene = null, lines = [], labels = [], cam = { az: -0.4, pitch: 0.7, dist: 1000, tx: 0, ty: 0 };
+  // 第一人称：跟着路线上的一个点往前看。follow 由外面传进来（当前点和前方一点的经纬度、海拔）
+  var follow = null, headYaw = 0, headPitch = 0, eyeH = 20, eyeZ = null, eyeZT = 0;
   var stat = { dem: '', texOk: 0, texFail: 0, texTotal: 0 };
 
   function el(tag, cls) { var e = document.createElement(tag); e.className = cls; root.appendChild(e); return e; }
@@ -38,7 +40,7 @@ function TRMap3D(root, hooks) {
 
   function nop() {}
   function deadApi() {
-    return { ok: false, setSource: nop, setEntries: nop, setOptions: nop, resetView: nop, redraw: nop,
+    return { ok: false, setSource: nop, setEntries: nop, setOptions: nop, resetView: nop, redraw: nop, setFollow: nop, followInfo: function () { return null; },
       stats: function () { return stat; }, destroy: function () { root.innerHTML = ''; } };
   }
   var gl = null;
@@ -506,10 +508,40 @@ function TRMap3D(root, hooks) {
   function localH(x, y) { return gridHeight(scene.cx + x / scene.C, scene.cy - y / scene.C); }
   function pivotZ() { return ((cam.th === undefined ? scene.iMid : cam.th) - scene.h0) * exag; }
   function viewProj() {
+    if (follow && scene && scene.Hg) return followProj();
     var tz = pivotZ(), cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
     var eye = [cam.tx - Math.sin(cam.az) * cp * cam.dist, cam.ty - Math.cos(cam.az) * cp * cam.dist, tz + sp * cam.dist];
     var ext = Math.max(scene.wm, scene.hm);
     return mul(persp(FOV, W / H, cam.dist / 50, cam.dist * 3 + ext * 2.5), lookAt(eye, [cam.tx, cam.ty, tz]));
+  }
+
+  /** 眼在路线上，朝前看；headYaw / headPitch 是拖动转出来的头部偏转，eyeH 是视点离地高度 */
+  function followProj() {
+    var C = scene.C;
+    function lx(lon) { return (TR.worldX(lon) - scene.cx) * C; }
+    function ly(lat) { return -(TR.worldY(lat) - scene.cy) * C; }
+    var ex = lx(follow.lon), ey = ly(follow.lat), ez = (follow.ele - scene.h0) * exag + eyeH * exag;
+    // 别让镜头钻进山里：脚下的地形可能比轨迹的海拔还高
+    var ground = gridHeight(TR.worldX(follow.lon), TR.worldY(follow.lat));
+    var minEz = (Math.max(ground, follow.ele) - scene.h0) * exag + 1.5 * exag;
+    if (ez < minEz) ez = minEz;
+    // 高程瓦片是几十米一格，贴地飞的时候「别钻进山里」这道限制会一格一格地跳，
+    // 所以最后的高度再按时间低通一次，画面上下就不会一顿一顿的
+    var tnow = (window.performance && window.performance.now) ? window.performance.now() : Date.now();
+    var tdt = eyeZT ? Math.min(0.2, Math.max(0, (tnow - eyeZT) / 1000)) : 0.016;
+    eyeZT = tnow;
+    if (eyeZ === null) eyeZ = ez;
+    else eyeZ += (ez - eyeZ) * (1 - Math.exp(-tdt / 0.25));
+    ez = Math.max(eyeZ, minEz);
+    var hx = lx(follow.headLon), hy = ly(follow.headLat), hz = (follow.headEle - scene.h0) * exag + eyeH * exag;
+    var dx = hx - ex, dy = hy - ey, dz = hz - ez;
+    var ca = Math.cos(headYaw), sa = Math.sin(headYaw);
+    var rx = dx * ca - dy * sa, ry = dx * sa + dy * ca;
+    var flat = Math.sqrt(rx * rx + ry * ry) || 1;
+    var ang = Math.atan2(dz, flat) + headPitch, cp = Math.cos(ang), sp = Math.sin(ang);
+    var D = 300;
+    var tx = ex + rx / flat * cp * D, ty = ey + ry / flat * cp * D, tz = ez + sp * D;
+    return mul(persp(FOV, W / H, 1.5, Math.max(20000, (scene.wm + scene.hm) * 2)), lookAt([ex, ey, ez], [tx, ty, tz]));
   }
   /**
    * 把旋转中心挪到画面正中看到的那块地面上，画面本身不动（眼睛的位置和视线方向都不变）。
@@ -643,9 +675,11 @@ function TRMap3D(root, hooks) {
   }
 
   // ---------------- 交互 ----------------
-  var drag = null, pinch = null;
+  var drag = null, pinch = null;   // 拖动是手控的：转到哪就是哪，松手立刻停，没有后效
+
+  /** Shift 或右键拖动平移：画面跟着鼠标走 */
   function panBy(dx, dy) {
-    var k = 2 * Math.tan(FOV / 2) * cam.dist / H;
+    var k = 2 * Math.tan(FOV / 2) * cam.dist / Math.max(1, H);
     var rx = Math.cos(cam.az), ry = -Math.sin(cam.az), fx = Math.sin(cam.az), fy = Math.cos(cam.az);
     cam.tx += (-dx * rx + dy * fx) * k; cam.ty += (-dx * ry + dy * fy) * k;
   }
@@ -658,6 +692,7 @@ function TRMap3D(root, hooks) {
   }
   function onDown(ev) {
     if (ev.target.tagName === 'BUTTON') return;
+    if (follow) { drag = { x: ev.clientX, y: ev.clientY, look: true }; ev.preventDefault(); return; }
     anchorPivot();
     drag = { x: ev.clientX, y: ev.clientY, pan: ev.button !== 0 || ev.shiftKey || ev.ctrlKey, turn: turnSign(ev.clientY) };
     ev.preventDefault();
@@ -671,13 +706,27 @@ function TRMap3D(root, hooks) {
     if (!drag) return;
     var dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
     drag.x = ev.clientX; drag.y = ev.clientY;
+    // 第一人称：按住画面往哪边拖，画面就往哪边走（往右拖=视线往左转），上下拖抬头低头
+    if (drag.look) {
+      headYaw += dx * 0.005;
+      headPitch = Math.max(-0.9, Math.min(0.9, headPitch + dy * 0.004));
+      invalidate();
+      return;
+    }
+    if (drag.pan) { panBy(dx, dy); clampCam(); invalidate(); return; }
     // 上下拖是改俯仰：向下拖，视角抬高成俯视
-    if (drag.pan) panBy(dx, dy); else { cam.az += drag.turn * dx * 0.006; cam.pitch += dy * 0.006; }
+    cam.az += drag.turn * dx * 0.006; cam.pitch += dy * 0.006;
     clampCam(); invalidate();
   }
   function onUp() { drag = null; }
   function onWheel(ev) {
     ev.preventDefault();
+    if (follow) {
+      // 第一人称下滚轮升降视点：站得高看得远，最低贴地
+      eyeH = Math.max(1.2, Math.min(400, eyeH * Math.exp(Math.max(-1, Math.min(1, ev.deltaY * (ev.deltaMode === 1 ? 0.05 : 0.0018))))));
+      invalidate();
+      return;
+    }
     anchorPivot();    cam.dist *= Math.exp(Math.max(-1, Math.min(1, ev.deltaY * (ev.deltaMode === 1 ? 0.05 : 0.0018))));
     clampCam(); invalidate();
   }
@@ -685,6 +734,11 @@ function TRMap3D(root, hooks) {
   function tdist(t) { var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
   function onTouchStart(ev) {
     if (ev.target.tagName === 'BUTTON') return;
+    if (follow) {
+      if (ev.touches.length === 1) { drag = { x: ev.touches[0].clientX, y: ev.touches[0].clientY, look: true }; pinch = null; }
+      else if (ev.touches.length === 2) { pinch = { d: tdist(ev.touches) }; drag = null; }
+      return;
+    }
     anchorPivot();
     if (ev.touches.length === 1) { drag = { x: ev.touches[0].clientX, y: ev.touches[0].clientY, turn: turnSign(ev.touches[0].clientY) }; pinch = null; }
     else if (ev.touches.length === 2) {
@@ -695,12 +749,26 @@ function TRMap3D(root, hooks) {
   function onTouchMove(ev) {
     if (!drag && !pinch) return;
     ev.preventDefault();
+    if (follow) {
+      if (pinch && ev.touches.length === 2) {
+        var dp = tdist(ev.touches);
+        eyeH = Math.max(1.2, Math.min(400, eyeH * pinch.d / Math.max(1, dp)));
+        pinch = { d: dp };
+      } else if (drag && drag.look && ev.touches.length === 1) {
+        headYaw += (ev.touches[0].clientX - drag.x) * 0.005;
+        headPitch = Math.max(-0.9, Math.min(0.9, headPitch + (ev.touches[0].clientY - drag.y) * 0.004));
+        drag = { x: ev.touches[0].clientX, y: ev.touches[0].clientY, look: true };
+      }
+      invalidate();
+      return;
+    }
     if (pinch && ev.touches.length === 2) {
       var d = tdist(ev.touches), mx = (ev.touches[0].clientX + ev.touches[1].clientX) / 2, my = (ev.touches[0].clientY + ev.touches[1].clientY) / 2;
       cam.dist *= pinch.d / d; panBy(mx - pinch.x, my - pinch.y);
       pinch = { d: d, x: mx, y: my };
     } else if (drag && ev.touches.length === 1) {
-      cam.az += drag.turn * (ev.touches[0].clientX - drag.x) * 0.006; cam.pitch += (ev.touches[0].clientY - drag.y) * 0.006;
+      cam.az += drag.turn * (ev.touches[0].clientX - drag.x) * 0.006;
+      cam.pitch = Math.max(0.06, Math.min(1.53, cam.pitch + (ev.touches[0].clientY - drag.y) * 0.006));
       drag = { x: ev.touches[0].clientX, y: ev.touches[0].clientY, turn: drag.turn };
     }
     clampCam(); invalidate();
@@ -744,6 +812,24 @@ function TRMap3D(root, hooks) {
       invalidate();
     },
     resetView: function () { resetCamera(); invalidate(); },
+    /** 第一人称：f 是当前点和前方一点的 { lon, lat, ele, headLon, headLat, headEle }；传 null 退出 */
+    setFollow: function (f) {
+      var was = !!follow;
+      follow = f || null;
+      if (!follow || !was) { headYaw = 0; headPitch = 0; eyeZ = null; }
+      invalidate();
+    },
+    /** 第一人称的视点高度（米，1.2 ~ 400）：推高可以当无人机看整座山 */
+    setEyeH: function (v) {
+      eyeH = Math.max(1.2, Math.min(400, v || 20));
+      invalidate();
+    },
+    followInfo: function () {
+      if (!follow) return null;
+      var ground = scene && scene.Hg ? gridHeight(TR.worldX(follow.lon), TR.worldY(follow.lat)) : follow.ele;
+      return { eyeH: eyeH, headYaw: headYaw, headPitch: headPitch, lon: follow.lon, lat: follow.lat,
+        ele: follow.ele, ground: ground, h0: scene ? scene.h0 : 0, exag: exag };
+    },
     /** 测试用：直接摆相机 */
     setCamera: function (c) { for (var k in c) if (c.hasOwnProperty(k)) cam[k] = c[k]; clampCam(); invalidate(); },
     /** 测试用：读相机、对准旋转中心；以及 (x 向东, y 向北，米，以地形中心为原点) 处的地面画在屏幕的哪个位置（CSS 像素） */

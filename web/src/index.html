@@ -21,6 +21,7 @@
     <label class="btn primary" for="inFiles">选择轨迹文件</label>
     <label class="btn" for="inDir" id="lblDir">选择文件夹</label>
     <button class="btn" id="btnClear" type="button">清空</button>
+    <button class="btn" id="btnShare" type="button" style="display:none">生成分享图</button>
     <span class="loader-tip">也可以把文件或整个文件夹直接拖到页面上，可以一次放多个</span>
   </div>
   <input type="file" id="inFiles" class="vh" multiple>
@@ -107,6 +108,7 @@
       <div class="hbody">
       <div class="cards">
         <button type="button" class="card" data-go="overview"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><rect class="w" x="5" y="8" width="38" height="32"/><rect class="b" x="5" y="8" width="38" height="10"/><path d="M5 29h38M19 18v22"/></svg><span class="card-t">概览</span><span class="card-q">这几场整体差多少？</span></button>
+        <button type="button" class="card" data-go="play"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><rect class="w" x="4" y="7" width="40" height="30" rx="3"/><path class="r" d="M19 15l12 8.500-12 8.500z"/><path d="M7 41h34"/><rect class="v" x="21" y="37" width="3" height="4"/></svg><span class="card-t">比赛回放</span><span class="card-q">这一场是怎么跑下来的？</span></button>
         <button type="button" class="card" data-go="splits"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><rect class="b" x="7" y="26" width="7" height="16"/><rect class="b" x="17" y="20" width="7" height="22"/><rect class="r" x="27" y="8" width="7" height="34"/><rect class="b" x="37" y="23" width="7" height="19"/><path d="M4 42h42"/></svg><span class="card-t">每公里分段</span><span class="card-q">哪几公里最慢？</span></button>
         <button type="button" class="card" data-go="profile"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><path class="n" d="M4 42l10-18 7 8 9-22 14 32z"/><path d="M2 42h44"/></svg><span class="card-t">海拔与速度</span><span class="card-q">速度从哪里开始掉的？</span></button>
         <button type="button" class="card" data-go="grade"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><path class="y" d="M4 42h40V18z"/><path class="a" d="M8 27l22-13M23 10l8 3.500-3.500 8"/></svg><span class="card-t">坡度表现</span><span class="card-q">上坡弱还是下坡弱？</span></button>
@@ -210,6 +212,30 @@
       <li>和基准场比：把选中的那一场当作 100，其他各场的每一项算成它的百分之几，写在括号里；「综合」是五项的平均。勾选或取消别的轨迹不会改变这些数字，换基准场才会。</li>
       <li>五项分别是：等效速度 =（距离 + 爬升 ÷ 100 米）÷ 总耗时；上坡爬升速率、平路速度（坡度 ±5% 以内）、下坡速度（坡度低于 -5%），这三项只算移动中的路段；后半程保持 = 后半程速度 ÷ 前半程速度，只比两个半程都跑过的坡度。</li>
       <li>同一条路线的两场，五项都可以直接比。路线不同时，平路和下坡的速度很看路面（台阶、碎石和土路差很多），这两项和「综合」只能当参考。</li>
+    </ul>
+  </section>
+
+  <section class="panel" id="p-play">
+    <div class="bar">
+      <span class="lbl">轨迹 <span id="selPlay"></span></span>
+      <button class="btn primary play-btn" id="btnPlay" type="button">播放</button>
+      <label>速度 <select id="selSpeed"><option value="0.05">每秒 0.05 公里</option><option value="0.1">每秒 0.1 公里</option><option value="0.2" selected>每秒 0.2 公里</option><option value="0.5">每秒 0.5 公里</option><option value="1">每秒 1 公里（最快）</option></select></label>
+      <label><input type="checkbox" id="chkLoop"> 循环</label>
+      <label>视角 <select id="selView"><option value="3d" selected>3D</option><option value="2d">俯视</option></select></label>
+      <label id="lblExag">海拔 <select id="selExag"><option value="1">1×</option><option value="2.5" selected>2.5×</option><option value="4">4×</option></select></label>
+      <button class="btn" id="btnViewReset" type="button">回正</button>
+      <span class="loader-tip">空格键暂停和继续；点或拖动下面那条「赛道条」跳到任意位置</span>
+    </div>
+    <div class="playgrid">
+      <div class="playmap"><canvas id="cPlayRoute"></canvas></div>
+      <div class="playnow" id="playNow"></div>
+    </div>
+    <div class="playstrip"><canvas id="cPlayStrip"></canvas></div>
+    <ul class="note">
+      <li>赛道条：山形是海拔，颜色是这一段的速度（把坡度的影响换算掉以后）比这一场自己的中位水平快还是慢——红色慢、绿色快，灰色是停留或没有数据；基线下面的深色短条是停留过的地方。横轴是里程。</li>
+      <li>3D 视角：轨迹按「东、北、海拔」画在空间里，海拔按 2.5 倍夸张，每一段按快慢上色，每 250 米一根铅垂线落到底面，地面上是这条路自己的投影，旁边标着公里数。拖动旋转，滚轮缩放，Shift 或右键拖动平移；手机上单指旋转、双指缩放。</li>
+      <li>3D 和俯视都只用文件里的坐标画，不联网，也不需要底图。要看真实地形和影像，到「地图」标签。</li>
+      <li>页面顶部「生成分享图」会把这一场画成一张 1080×1350 的图片，存下来可以直接发出去。</li>
     </ul>
   </section>
 
@@ -416,6 +442,11 @@
       <button class="btn primary" id="btn2d" type="button">打开 2D 地图</button>
       <button class="btn primary" id="btn3d" type="button">打开 3D 地图</button>
       <button class="btn" id="btnMapOff" type="button" style="display:none">关闭地图</button>
+      <button class="btn" id="btnFp" type="button" style="display:none">第一人称回放</button>
+      <label id="lblFpTrack" style="display:none">回放这一条 <span id="selFp"></span></label>
+      <label id="lblFpEye" style="display:none">视点高度 <input type="range" id="rngEye" min="0" max="100" step="1" value="0"> <span id="eyeVal">1.7 m</span></label>
+      <button class="btn primary" id="btnFpPlay" type="button" style="display:none">播放</button>
+      <label id="lblFpDur" style="display:none">速度 <select id="selSpeed2"><option value="0.05">每秒 0.05 公里</option><option value="0.1">每秒 0.1 公里</option><option value="0.2" selected>每秒 0.2 公里</option><option value="0.5">每秒 0.5 公里</option><option value="1">每秒 1 公里（最快）</option></select></label>
       <label>图源 <select id="selSrc"></select></label>
       <label>着色 <select id="selColor">
         <option value="track">按轨迹</option>
@@ -436,10 +467,12 @@
       <span class="lbl">地形范围 <span id="selRegion"></span></span>
       <label>地形夸张 <input type="range" id="rngExag" min="1" max="3" step="0.1" value="1.5"> <span id="exagVal">1.5x</span></label>
       <label>贴图清晰度 <select id="selQuality"><option value="std">标准</option><option value="high">高（加载更慢）</option></select></label>
-      <span class="loader-tip">拖动旋转，右键或 Shift+拖动平移，滚轮缩放；手机上单指拖动旋转，双指缩放和平移</span>
+      <span class="loader-tip" id="tip3d">拖动旋转，右键或 Shift+拖动平移，滚轮缩放；手机上单指拖动旋转，双指缩放和平移</span>
     </div>
     <div id="mapLegend" class="legend"></div>
     <div id="mapBox" class="mapbox"></div>
+    <div class="mapstrip" id="mapStripBox" style="display:none"><canvas id="cMapStrip"></canvas></div>
+    <p class="loader-tip" id="fpTip" style="display:none">第一人称：眼贴着路线往前看。按住画面拖动看四周，滚轮升降视点（最高 400 米，可以当无人机看整座山）。</p>
     <ul class="note">
       <li>地图默认不加载。打开后，浏览器会向所选图源请求这一带的底图瓦片，对方因此能知道你在看哪个区域；轨迹本身不会发出去。</li>
       <li>3D 的地形起伏来自 AWS 上公开的全球高程数据，和图源无关；地形会比轨迹范围往外多画 10 公里，轨迹附近用精细的地形和贴图，外圈较粗。</li>

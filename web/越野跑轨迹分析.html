@@ -263,6 +263,24 @@ kbd { display: inline-block; padding: 0 7px; margin: 0 1px; border: 2px solid #1
 
 .foot { color: #4a5a75; font-size: 12px; padding-bottom: 20px; }
 
+/* ---------- 比赛回放 ---------- */
+.playgrid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(250px, 1fr); gap: 16px; margin: 8px 0 12px; }
+.playmap { border: 2px solid #14284b; border-radius: 8px; overflow: hidden; background: #fff; }
+.playmap canvas { display: block; }
+.playnow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-content: center; }
+.pn { min-width: 0; padding: 9px 6px 9px 12px; border-top: 1px solid #dfe3ea; }
+.pn.main { grid-column: 1 / -1; padding-top: 0; border-top: 2px solid #14284b; }
+.pn-k { display: block; font-size: 12px; color: #4a5a75; letter-spacing: .5px; }
+.pn-v { display: block; font-family: "DIN Alternate", Bahnschrift, "DIN Next", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 26px; font-weight: bold; line-height: 1.25; white-space: nowrap; overflow: hidden; }
+.pn.main .pn-v { font-size: 46px; letter-spacing: 1px; }
+.pn-v small { font-size: 13px; font-weight: normal; color: #4a5a75; margin-left: 4px; letter-spacing: 0; }
+.playstrip { border: 2px solid #14284b; border-radius: 8px; padding: 4px 4px 0; background: #fff; }
+.playstrip canvas { display: block; cursor: pointer; touch-action: pan-y; }
+.mapstrip { margin-top: 8px; border: 2px solid #14284b; border-radius: 8px; padding: 4px 4px 0; background: #fff; }
+.mapstrip canvas { display: block; cursor: pointer; touch-action: pan-y; }
+.play-btn { min-width: 84px; }
+
 /* ---------- 窄屏 ---------- */
 @media (max-width: 960px) {
   .card { width: calc(50% - 12px); }
@@ -272,6 +290,7 @@ kbd { display: inline-block; padding: 0 7px; margin: 0 1px; border: 2px solid #1
 }
 @media (max-width: 820px) {
   .grid2 > .chart { width: 100%; }
+  .playgrid { grid-template-columns: 1fr; gap: 10px; }
   .top { padding: 12px 14px 10px; }
   .top h1 { font-size: 22px; display: block; margin-bottom: 2px; }
   .loader, .tracks, .panel, .foot, .nav { margin-left: 8px; margin-right: 8px; }
@@ -308,6 +327,7 @@ kbd { display: inline-block; padding: 0 7px; margin: 0 1px; border: 2px solid #1
     <label class="btn primary" for="inFiles">选择轨迹文件</label>
     <label class="btn" for="inDir" id="lblDir">选择文件夹</label>
     <button class="btn" id="btnClear" type="button">清空</button>
+    <button class="btn" id="btnShare" type="button" style="display:none">生成分享图</button>
     <span class="loader-tip">也可以把文件或整个文件夹直接拖到页面上，可以一次放多个</span>
   </div>
   <input type="file" id="inFiles" class="vh" multiple>
@@ -394,6 +414,7 @@ kbd { display: inline-block; padding: 0 7px; margin: 0 1px; border: 2px solid #1
       <div class="hbody">
       <div class="cards">
         <button type="button" class="card" data-go="overview"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><rect class="w" x="5" y="8" width="38" height="32"/><rect class="b" x="5" y="8" width="38" height="10"/><path d="M5 29h38M19 18v22"/></svg><span class="card-t">概览</span><span class="card-q">这几场整体差多少？</span></button>
+        <button type="button" class="card" data-go="play"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><rect class="w" x="4" y="7" width="40" height="30" rx="3"/><path class="r" d="M19 15l12 8.500-12 8.500z"/><path d="M7 41h34"/><rect class="v" x="21" y="37" width="3" height="4"/></svg><span class="card-t">比赛回放</span><span class="card-q">这一场是怎么跑下来的？</span></button>
         <button type="button" class="card" data-go="splits"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><rect class="b" x="7" y="26" width="7" height="16"/><rect class="b" x="17" y="20" width="7" height="22"/><rect class="r" x="27" y="8" width="7" height="34"/><rect class="b" x="37" y="23" width="7" height="19"/><path d="M4 42h42"/></svg><span class="card-t">每公里分段</span><span class="card-q">哪几公里最慢？</span></button>
         <button type="button" class="card" data-go="profile"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><path class="n" d="M4 42l10-18 7 8 9-22 14 32z"/><path d="M2 42h44"/></svg><span class="card-t">海拔与速度</span><span class="card-q">速度从哪里开始掉的？</span></button>
         <button type="button" class="card" data-go="grade"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><path class="y" d="M4 42h40V18z"/><path class="a" d="M8 27l22-13M23 10l8 3.500-3.500 8"/></svg><span class="card-t">坡度表现</span><span class="card-q">上坡弱还是下坡弱？</span></button>
@@ -497,6 +518,30 @@ kbd { display: inline-block; padding: 0 7px; margin: 0 1px; border: 2px solid #1
       <li>和基准场比：把选中的那一场当作 100，其他各场的每一项算成它的百分之几，写在括号里；「综合」是五项的平均。勾选或取消别的轨迹不会改变这些数字，换基准场才会。</li>
       <li>五项分别是：等效速度 =（距离 + 爬升 ÷ 100 米）÷ 总耗时；上坡爬升速率、平路速度（坡度 ±5% 以内）、下坡速度（坡度低于 -5%），这三项只算移动中的路段；后半程保持 = 后半程速度 ÷ 前半程速度，只比两个半程都跑过的坡度。</li>
       <li>同一条路线的两场，五项都可以直接比。路线不同时，平路和下坡的速度很看路面（台阶、碎石和土路差很多），这两项和「综合」只能当参考。</li>
+    </ul>
+  </section>
+
+  <section class="panel" id="p-play">
+    <div class="bar">
+      <span class="lbl">轨迹 <span id="selPlay"></span></span>
+      <button class="btn primary play-btn" id="btnPlay" type="button">播放</button>
+      <label>速度 <select id="selSpeed"><option value="0.05">每秒 0.05 公里</option><option value="0.1">每秒 0.1 公里</option><option value="0.2" selected>每秒 0.2 公里</option><option value="0.5">每秒 0.5 公里</option><option value="1">每秒 1 公里（最快）</option></select></label>
+      <label><input type="checkbox" id="chkLoop"> 循环</label>
+      <label>视角 <select id="selView"><option value="3d" selected>3D</option><option value="2d">俯视</option></select></label>
+      <label id="lblExag">海拔 <select id="selExag"><option value="1">1×</option><option value="2.5" selected>2.5×</option><option value="4">4×</option></select></label>
+      <button class="btn" id="btnViewReset" type="button">回正</button>
+      <span class="loader-tip">空格键暂停和继续；点或拖动下面那条「赛道条」跳到任意位置</span>
+    </div>
+    <div class="playgrid">
+      <div class="playmap"><canvas id="cPlayRoute"></canvas></div>
+      <div class="playnow" id="playNow"></div>
+    </div>
+    <div class="playstrip"><canvas id="cPlayStrip"></canvas></div>
+    <ul class="note">
+      <li>赛道条：山形是海拔，颜色是这一段的速度（把坡度的影响换算掉以后）比这一场自己的中位水平快还是慢——红色慢、绿色快，灰色是停留或没有数据；基线下面的深色短条是停留过的地方。横轴是里程。</li>
+      <li>3D 视角：轨迹按「东、北、海拔」画在空间里，海拔按 2.5 倍夸张，每一段按快慢上色，每 250 米一根铅垂线落到底面，地面上是这条路自己的投影，旁边标着公里数。拖动旋转，滚轮缩放，Shift 或右键拖动平移；手机上单指旋转、双指缩放。</li>
+      <li>3D 和俯视都只用文件里的坐标画，不联网，也不需要底图。要看真实地形和影像，到「地图」标签。</li>
+      <li>页面顶部「生成分享图」会把这一场画成一张 1080×1350 的图片，存下来可以直接发出去。</li>
     </ul>
   </section>
 
@@ -703,6 +748,11 @@ kbd { display: inline-block; padding: 0 7px; margin: 0 1px; border: 2px solid #1
       <button class="btn primary" id="btn2d" type="button">打开 2D 地图</button>
       <button class="btn primary" id="btn3d" type="button">打开 3D 地图</button>
       <button class="btn" id="btnMapOff" type="button" style="display:none">关闭地图</button>
+      <button class="btn" id="btnFp" type="button" style="display:none">第一人称回放</button>
+      <label id="lblFpTrack" style="display:none">回放这一条 <span id="selFp"></span></label>
+      <label id="lblFpEye" style="display:none">视点高度 <input type="range" id="rngEye" min="0" max="100" step="1" value="0"> <span id="eyeVal">1.7 m</span></label>
+      <button class="btn primary" id="btnFpPlay" type="button" style="display:none">播放</button>
+      <label id="lblFpDur" style="display:none">速度 <select id="selSpeed2"><option value="0.05">每秒 0.05 公里</option><option value="0.1">每秒 0.1 公里</option><option value="0.2" selected>每秒 0.2 公里</option><option value="0.5">每秒 0.5 公里</option><option value="1">每秒 1 公里（最快）</option></select></label>
       <label>图源 <select id="selSrc"></select></label>
       <label>着色 <select id="selColor">
         <option value="track">按轨迹</option>
@@ -723,10 +773,12 @@ kbd { display: inline-block; padding: 0 7px; margin: 0 1px; border: 2px solid #1
       <span class="lbl">地形范围 <span id="selRegion"></span></span>
       <label>地形夸张 <input type="range" id="rngExag" min="1" max="3" step="0.1" value="1.5"> <span id="exagVal">1.5x</span></label>
       <label>贴图清晰度 <select id="selQuality"><option value="std">标准</option><option value="high">高（加载更慢）</option></select></label>
-      <span class="loader-tip">拖动旋转，右键或 Shift+拖动平移，滚轮缩放；手机上单指拖动旋转，双指缩放和平移</span>
+      <span class="loader-tip" id="tip3d">拖动旋转，右键或 Shift+拖动平移，滚轮缩放；手机上单指拖动旋转，双指缩放和平移</span>
     </div>
     <div id="mapLegend" class="legend"></div>
     <div id="mapBox" class="mapbox"></div>
+    <div class="mapstrip" id="mapStripBox" style="display:none"><canvas id="cMapStrip"></canvas></div>
+    <p class="loader-tip" id="fpTip" style="display:none">第一人称：眼贴着路线往前看。按住画面拖动看四周，滚轮升降视点（最高 400 米，可以当无人机看整座山）。</p>
     <ul class="note">
       <li>地图默认不加载。打开后，浏览器会向所选图源请求这一带的底图瓦片，对方因此能知道你在看哪个区域；轨迹本身不会发出去。</li>
       <li>3D 的地形起伏来自 AWS 上公开的全球高程数据，和图源无关；地形会比轨迹范围往外多画 10 公里，轨迹附近用精细的地形和贴图，外圈较粗。</li>
@@ -1970,8 +2022,196 @@ var TR = (function () {
     return s || '未命名';
   }
 
+  // ---------------- 赛道条（整场压成一条）和回放 ----------------
+  /** 逐点累计爬升（和 trackStats 用同一个 3 米回滞阈值），回放时显示已爬升 / 剩余爬升 */
+  function gainPrefix(tr) {
+    var n = tr.n, out = new Float64Array(n), g = 0, ref = tr.smooth[0], i, d;
+    for (i = 1; i < n; i++) {
+      d = tr.smooth[i] - ref;
+      if (d >= HYST) { g += d; ref = tr.smooth[i]; }
+      else if (d <= -HYST) ref = tr.smooth[i];
+      out[i] = g;
+    }
+    return out;
+  }
+
+  /** 把整场按里程等宽切成 nb 格，给「赛道条」用。cost 是 fitCostCurve 的结果，传 null 时按 Tobler 归一化。
+   *  返回 { total, med, nb, bins: [{ d0, d1, e0, e1, grd, spd, dev, stop }] }：
+   *    d0/d1 起止里程（米）；e0/e1 这一格里海拔的最低、最高值（米，没有海拔数据时 null）；
+   *    grd 平均坡度（%）；spd 移动中的平均速度（km/h，没有时间数据时 null）；
+   *    dev = log2(这一格的速度 ÷ 同坡度的平时水平 ÷ 全场的中位水平)，+1 就是比平时快一倍；
+   *    stop 停留时间占这一格全部时间的比例（0~1）。 */
+  function fingerStrip(tr, cost, nb) {
+    nb = Math.max(8, Math.min(400, Math.round(nb || 240)));
+    var total = tr.cum[tr.n - 1], out = [], W = total / nb, i, k, b, d, dt;
+    for (k = 0; k < nb; k++) out.push({ d0: k * W, d1: (k + 1) * W, e0: Infinity, e1: -Infinity, d: 0, dt: 0, dm: 0, dtm: 0, stop: 0, gs: 0, gn: 0 });
+    if (!(total > 0)) return { total: 0, med: 1, nb: nb, bins: out };
+    var pm = tr.pm || pointMetrics(tr);
+    function binOf(m) { var k2 = Math.floor(m / W); return k2 < 0 ? 0 : (k2 >= nb ? nb - 1 : k2); }
+    for (i = 1; i < tr.n; i++) {
+      b = out[binOf((tr.cum[i] + tr.cum[i - 1]) / 2)];
+      d = tr.cum[i] - tr.cum[i - 1];
+      dt = tr.hasTime ? tr.t[i] - tr.t[i - 1] : 0;
+      b.d += d;
+      b.gs += pm.grd[i] * d; b.gn += d;
+      if (dt > 0) {
+        b.dt += dt;
+        if (d / dt > MOVE_V) { b.dm += d; b.dtm += dt; } else b.stop += dt;
+      }
+    }
+    if (tr.hasEle) {
+      for (i = 0; i < tr.n; i++) {
+        b = out[binOf(tr.cum[i])];
+        if (tr.smooth[i] < b.e0) b.e0 = tr.smooth[i];
+        if (tr.smooth[i] > b.e1) b.e1 = tr.smooth[i];
+      }
+    }
+    var q = [];
+    for (k = 0; k < nb; k++) {
+      b = out[k];
+      b.grd = b.gn > 0 ? b.gs / b.gn : 0;
+      b.spd = b.dtm > 20 && b.dm > 20 ? b.dm / b.dtm * 3.6 : null;
+      b.stop = b.dt > 0 ? b.stop / b.dt : 0;
+      b.e0 = b.e0 === Infinity ? null : b.e0;
+      b.e1 = b.e1 === -Infinity ? null : b.e1;
+      if (b.spd !== null) q.push(b.spd / (cost ? cost.f(b.grd) : tobler(b.grd)));
+    }
+    var med = q.length ? median(q) : 1;
+    for (k = 0; k < nb; k++) {
+      b = out[k];
+      b.dev = b.spd === null || !(med > 0) ? null : Math.log(b.spd / (cost ? cost.f(b.grd) : tobler(b.grd)) / med) / Math.LN2;
+    }
+    return { total: total, med: med, nb: nb, bins: out };
+  }
+
+  /** 回放：按全程进度（0~1）取一点。有时间按时间取，没有时间按里程取。
+   *  返回 { i, u, d, t, ele, hr, spd, grd }，u 是 i 到 i+1 之间的插值比例（画点时在两点间插）。 */
+  function replayAt(tr, frac) {
+    var n = tr.n, f = frac < 0 ? 0 : (frac > 1 ? 1 : frac), key = tr.hasTime ? tr.t : tr.cum;
+    var tot = key[n - 1];
+    if (!(tot > 0)) return null;
+    var target = f * tot, lo = 0, hi = n - 1, mid;
+    while (lo < hi - 1) { mid = (lo + hi) >> 1; if (key[mid] <= target) lo = mid; else hi = mid; }
+    var span = key[hi] - key[lo], u = span > 0 ? (target - key[lo]) / span : 0;
+    if (u < 0) u = 0; else if (u > 1) u = 1;
+    var pm = tr.pm || pointMetrics(tr);
+    return {
+      i: lo, u: u,
+      d: tr.cum[lo] + (tr.cum[hi] - tr.cum[lo]) * u,
+      t: tr.hasTime ? tr.t[lo] + (tr.t[hi] - tr.t[lo]) * u : null,
+      ele: tr.smooth[lo] + (tr.smooth[hi] - tr.smooth[lo]) * u,
+      hr: tr.hr[lo] > 0 ? Math.round(tr.hr[lo] + ((tr.hr[hi] > 0 ? tr.hr[hi] : tr.hr[lo]) - tr.hr[lo]) * u) : null,
+      spd: pm.spd[lo] + (pm.spd[hi] - pm.spd[lo]) * u,
+      grd: pm.grd[lo]
+    };
+  }
+
+  /** 里程进度 → 时间进度。回放的光标按时间走，赛道条的横轴是里程，
+   *  点赛道条时要换算一下，光标才会落在手指底下。没有时间数据时原样返回。 */
+  function timeFrac(tr, dfrac) {
+    var n = tr.n, f = dfrac < 0 ? 0 : (dfrac > 1 ? 1 : dfrac), total = tr.cum[n - 1], tot = tr.t[n - 1];
+    if (!tr.hasTime || !(tot > 0) || !(total > 0)) return f;
+    var target = f * total, lo = 0, hi = n - 1, mid;
+    while (lo < hi - 1) { mid = (lo + hi) >> 1; if (tr.cum[mid] <= target) lo = mid; else hi = mid; }
+    var span = tr.cum[hi] - tr.cum[lo], u = span > 0 ? (target - tr.cum[lo]) / span : 0;
+    return (tr.t[lo] + (tr.t[hi] - tr.t[lo]) * u) / tot;
+  }
+
+  /** 把轨迹投到本地平面，给 3D 回放用。和 compare/same_route.py 画 3D 图用的是同一套算法：
+   *  x = (经度 − 起点经度) × 111.32 × cos(起点纬度)，y = (纬度 − 起点纬度) × 111.32，单位公里。
+   *  返回按 maxPts 抽稀后的 x / y（公里）、z（海拔米，没海拔时是 0）、d（里程进度 0~1）。 */
+  function localKm(tr, maxPts) {
+    var n = tr.n, step = Math.max(1, Math.ceil(n / (maxPts || 1200)));
+    var kx = 111.32 * Math.cos(rad(tr.lat[0])), ky = 111.32, lon0 = tr.lon[0], lat0 = tr.lat[0];
+    var total = tr.cum[n - 1], x = [], y = [], z = [], d = [], i;
+    function add(k) {
+      x.push((tr.lon[k] - lon0) * kx);
+      y.push((tr.lat[k] - lat0) * ky);
+      z.push(tr.hasEle ? tr.smooth[k] : 0);
+      d.push(total > 0 ? tr.cum[k] / total : 0);
+    }
+    for (i = 0; i < n; i += step) add(i);
+    if ((n - 1) % step) add(n - 1);
+    return { x: x, y: y, z: z, d: d, n: x.length, kx: kx, ky: ky };
+  }
+
+  /** 第一人称专用的平滑路线：在本地平面上按里程 ±radiusM 米做滑动平均。
+   *  手表录的轨迹左右有几米的抖动，贴着地面看会放大成镜头乱晃，平均一下就没有了。
+   *  返回 { x, y, z, d, n }（公里 / 米 / 里程进度），和 localKm 的字段一一对应。 */
+  function smoothTrack(tr, maxPts, radiusM) {
+    var lk = localKm(tr, maxPts || 1400), r = radiusM === undefined ? 30 : radiusM;
+    var total = tr.cum[tr.n - 1], n = lk.n, out = { x: [], y: [], z: [], d: lk.d, n: n };
+    var a = 0, b = 0, i;
+    for (i = 0; i < n; i++) {
+      var target = lk.d[i] * total;
+      while (a < n - 1 && lk.d[a] * total < target - r) a++;
+      if (b < i) b = i;
+      while (b < n - 1 && lk.d[b + 1] * total <= target + r) b++;
+      var sx = 0, sy = 0, sz = 0, c = 0, k;
+      for (k = a; k <= b; k++) { sx += lk.x[k]; sy += lk.y[k]; sz += lk.z[k]; c++; }
+      out.x.push(c ? sx / c : lk.x[i]);
+      out.y.push(c ? sy / c : lk.y[i]);
+      out.z.push(c ? sz / c : lk.z[i]);
+    }
+    return out;
+  }
+
+  /** 在平滑后的路线上按里程进度取一点（相邻两点之间插值） */
+  function pathAt(path, frac) {
+    var n = path.n, d = path.d, lo = 0, hi = n - 1, mid;
+    while (lo < hi - 1) { mid = (lo + hi) >> 1; if (d[mid] <= frac) lo = mid; else hi = mid; }
+    // 轨迹里偶尔有重复的点（同一个位置记了两笔），这里的里程进度是平的；
+    // 碰到「跨度为 0」的格子就往后找一个有跨度的，不然位置会卡住一拍再跳过去
+    while (hi < n - 1 && !(d[hi] - d[lo] > 0) && d[hi] <= frac) hi++;
+    var span = d[hi] - d[lo], u = span > 0 ? (frac - d[lo]) / span : 0;
+    u = u < 0 ? 0 : (u > 1 ? 1 : u);
+    return { x: path.x[lo] + (path.x[hi] - path.x[lo]) * u,
+      y: path.y[lo] + (path.y[hi] - path.y[lo]) * u,
+      z: path.z[lo] + (path.z[hi] - path.z[lo]) * u };
+  }
+
+  /** 第一人称相机的平滑：给定这一帧的里程进度和过去的时间，算出相机该在哪、朝哪看。
+   *  位置按 0.30 秒的时间常数低通，前进方向因此也一起被抹平；朝向按 0.35 秒低通。
+   *  cam 是上一帧的状态（第一次传 null 即可），返回同一个对象。
+   *  跳转（拖赛道条）时位置差得太多，直接跟过去，不会拖着慢慢飘。 */
+  function followStep(cam, path, frac, totalM, dt) {
+    cam = cam || {};
+    var tp = pathAt(path, frac);
+    var head = pathAt(path, Math.min(1, frac + 1000 / Math.max(1, totalM)));
+    dt = dt > 0 ? dt : 0.016;
+    var kp = 1 - Math.exp(-dt / 0.30);
+    if (!cam.eye || Math.abs(tp.x - cam.eye.x) + Math.abs(tp.y - cam.eye.y) > 0.5) {
+      cam.eye = { x: tp.x, y: tp.y, z: tp.z };
+    } else {
+      cam.eye.x += (tp.x - cam.eye.x) * kp;
+      cam.eye.y += (tp.y - cam.eye.y) * kp;
+      cam.eye.z += (tp.z - cam.eye.z) * kp;
+    }
+    var ang = Math.atan2(head.y - tp.y, head.x - tp.x), ka = 1 - Math.exp(-dt / 0.80);
+    if (cam.ang === undefined) { cam.ang = ang; cam.ele = cam.eye.z; cam.aheadEle = head.z; }
+    else {
+      var d = ang - cam.ang;
+      while (d > Math.PI) d -= 2 * Math.PI;
+      while (d < -Math.PI) d += 2 * Math.PI;
+      cam.ang += d * ka;
+      cam.ele += (cam.eye.z - cam.ele) * ka;
+      cam.aheadEle += (head.z - cam.aheadEle) * ka;
+    }
+    return cam;
+  }
+
+  /** 画路线图用的抽稀点：墨卡托归一化坐标 + 对应的里程进度，最多约 maxPts 个点 */
+  function routeShape(tr, maxPts) {
+    var n = tr.n, step = Math.max(1, Math.ceil(n / (maxPts || 900))), xs = [], ys = [], fr = [], i, total = tr.cum[n - 1];
+    for (i = 0; i < n; i += step) { xs.push(worldX(tr.lon[i])); ys.push(worldY(tr.lat[i])); fr.push(total > 0 ? tr.cum[i] / total : 0); }
+    if (fr[fr.length - 1] < 1) { xs.push(worldX(tr.lon[n - 1])); ys.push(worldY(tr.lat[n - 1])); fr.push(1); }
+    return { n: xs.length, x: xs, y: ys, fr: fr };
+  }
+
   return {
     MOVE_V: MOVE_V, MATCH_R: MATCH_R, BUCKETS: BUCKETS,
+    gainPrefix: gainPrefix, fingerStrip: fingerStrip, replayAt: replayAt, routeShape: routeShape, timeFrac: timeFrac, localKm: localKm, smoothTrack: smoothTrack,
+    pathAt: pathAt, followStep: followStep,
     haversine: haversine, fmtHms: fmtHms, fmtPace: fmtPace, median: median,
     parseGpx: parseGpx, parseTcx: parseTcx, parseTrackFile: parseTrackFile, buildTrack: buildTrack, movingTime: movingTime,
     splits: splits, gradeSamples: gradeSamples, bucketStats: bucketStats,
@@ -2363,6 +2603,766 @@ var TRChart = (function () {
   }
 
   return { draw: draw, rgba: rgba };
+})();
+
+// ===== show.js =====
+/* 「一眼看懂」的三块画布：赛道条（整场压成一条）、路线图、分享卡片。
+ * 只用 ES5 和 canvas 2D，不依赖别的库。配色由调用方传进来，和页面其他地方保持一致。
+ * 都是平涂：没有渐变、没有阴影，靠颜色和粗细分层次。
+ */
+var TRShow = (function () {
+  'use strict';
+
+  var INK = '#14284b', MUTE = '#c9d0db', STOP = '#5b6678', PALE = '#f4f4f1';
+  var FF = 'Inter,"Helvetica Neue",Helvetica,Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
+  var TF = '"DIN Alternate",Bahnschrift,"DIN Next",' + FF;
+
+  function font(px, bold, fam) { return (bold ? 'bold ' : '') + px + 'px ' + (fam || FF); }
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  function isNum(v) { return v !== null && v !== undefined && isFinite(v); }
+  function mix(a, b, u) {
+    if (!isNum(a)) return b;
+    if (!isNum(b)) return a;
+    return a + (b - a) * u;
+  }
+  function med(arr) {
+    var a = arr.slice().sort(function (p, q) { return p - q; }), n = a.length;
+    return n % 2 ? a[(n - 1) / 2] : (a[n / 2 - 1] + a[n / 2]) / 2;
+  }
+
+  /** 按 CSS 尺寸和像素比重设画布大小，返回缩放好的 2d 上下文 */
+  function prep(canvas, W, H) {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+    return ctx;
+  }
+
+  /** 调色板按 0~1 取色：在两档之间插值出连续的 RGB，相邻像素只差一点点，
+   *  一整条画下来是色带而不是一格一格的马赛克（仍然是纯色块，不用渐变） */
+  function makeRamp(pal) {
+    var rgb = [], i;
+    for (i = 0; i < pal.length; i++) {
+      var h = String(pal[i]).charAt(0) === '#' ? String(pal[i]).substr(1) : String(pal[i]);
+      if (h.length === 3) h = h.charAt(0) + h.charAt(0) + h.charAt(1) + h.charAt(1) + h.charAt(2) + h.charAt(2);
+      var v = parseInt(h, 16);
+      rgb.push([(v >> 16) & 255, (v >> 8) & 255, v & 255]);
+    }
+    var n = rgb.length - 1;
+    return function (t) {
+      if (!n) return pal[0];
+      var x = clamp(t, 0, 1) * n, i2 = Math.min(n - 1, Math.floor(x)), u = x - i2, a = rgb[i2], b = rgb[i2 + 1];
+      return 'rgb(' + Math.round(a[0] + (b[0] - a[0]) * u) + ',' + Math.round(a[1] + (b[1] - a[1]) * u) + ',' + Math.round(a[2] + (b[2] - a[2]) * u) + ')';
+    };
+  }
+
+  /** 快的绿、慢的红、没数据的灰（和地图上「比坡度预期快/慢」用的是同一套颜色） */
+  function colorOf(dev, ramp) {
+    if (!isNum(dev)) return MUTE;
+    return ramp((dev + 1) / 2);
+  }
+
+  /** ±r 格的中值平滑：去掉落单格的跳变，空缺用两边的值补上 */
+  function smoothSeries(a, r) {
+    var n = a.length, out = [], i, j, w, last;
+    for (i = 0; i < n; i++) {
+      w = [];
+      for (j = Math.max(0, i - r); j <= Math.min(n - 1, i + r); j++) if (isNum(a[j])) w.push(a[j]);
+      out[i] = w.length ? med(w) : null;
+    }
+    last = null;
+    for (i = 0; i < n; i++) { if (isNum(out[i])) last = out[i]; else out[i] = last; }
+    last = null;
+    for (i = n - 1; i >= 0; i--) { if (isNum(out[i])) last = out[i]; else out[i] = last; }
+    return out;
+  }
+
+  /** 横轴上公里刻度的间隔：保证相邻两个标签至少隔开 minPx 像素 */
+  function kmStep(totalM, pxW, minPx) {
+    var list = [0.5, 1, 2, 5, 10, 20, 50, 100], i;
+    for (i = 0; i < list.length; i++) if (list[i] * 1000 / totalM * pxW >= (minPx || 46)) return list[i];
+    return list[list.length - 1];
+  }
+
+  /** 赛道条的底线在哪个高度（光标、刻度、山形都按这个高度对齐） */
+  function stripBase(y, h, big) { return y + h - (big ? 24 : 20); }
+
+  /** 赛道条：整场按里程压成一条，山形是海拔，颜色是这一段比平时快（绿）还是慢（红）。
+   *  按像素列插值再上色，相邻列最多差一个档位，看起来是一条色带而不是一排马赛克。
+   *  spec: { bins, total, palette, big, cursor } */
+  function paintStrip(ctx, x, y, w, h, spec) {
+    var bins = spec.bins || [], nb = bins.length;
+    var ramp = makeRamp(spec.palette && spec.palette.length ? spec.palette : [MUTE]);
+    var big = !!spec.big, fs = big ? 15 : 10, k, b;
+    var base = stripBase(y, h, big), top = y + (big ? 12 : 10);
+
+    if (!nb) {
+      ctx.fillStyle = '#888'; ctx.font = font(13); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('还没有可以画的数据', x + w / 2, y + h / 2);
+      return;
+    }
+
+    // 每格的海拔（用最高的那点）和偏差；这一格里大半时间在停留、又没有速度，就标成灰
+    var e1 = [], dv = [], gray = [], lo = Infinity, hi = -Infinity;
+    for (k = 0; k < nb; k++) {
+      b = bins[k];
+      e1[k] = b.e1;
+      dv[k] = b.dev;
+      gray[k] = !isNum(b.dev) && b.stop > 0.4;
+      if (isNum(b.e0) && b.e0 < lo) lo = b.e0;
+      if (isNum(b.e1)) { if (b.e1 < lo) lo = b.e1; if (b.e1 > hi) hi = b.e1; }
+    }
+    var hasEle = hi >= lo;
+    if (!hasEle) { lo = 0; hi = 1; }
+    if (!(hi > lo)) hi = lo + 1;
+    // 只有落单一格的灰色不画成灰，交给前后插值——否则平坦的路段上会出现一条一条的细灰线
+    for (k = 0; k < nb; k++) {
+      if (!gray[k]) continue;
+      var a = k;
+      while (k < nb && gray[k]) k++;
+      if (k - a < 2) for (var j2 = a; j2 < k; j2++) gray[j2] = false;
+    }
+    var sm = smoothSeries(dv, big ? 3 : 2);
+
+    var cols = Math.max(8, Math.round(w)), cw = w / cols, px, i0, u, ee, yTop, tops = [];
+    for (px = 0; px < cols; px++) {
+      var t = (px + 0.5) / cols * nb - 0.5;
+      i0 = Math.floor(t);
+      u = t - i0;
+      if (i0 < 0) { i0 = 0; u = 0; }
+      if (i0 > nb - 2) { i0 = Math.max(0, nb - 2); u = clamp(t - i0, 0, 1); }
+      ee = mix(e1[i0], e1[i0 + 1], u);
+      yTop = hasEle ? base - (ee - lo) / (hi - lo) * (base - top) : base - (big ? 26 : 16);
+      if (yTop > base - 1) yTop = base - 1;
+      tops[px] = yTop;
+      ctx.fillStyle = (u < 0.5 ? gray[i0] : gray[i0 + 1]) ? MUTE : colorOf(mix(sm[i0], sm[i0 + 1], u), ramp);
+      ctx.fillRect(x + px * cw, yTop, cw + 0.5, base - yTop);
+    }
+    // 山脊线：一条细的深蓝线，把参差的柱顶连成清晰的山形
+    ctx.strokeStyle = INK; ctx.lineWidth = big ? 2 : 1.2; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    for (px = 0; px < cols; px++) {
+      if (px) ctx.lineTo(x + (px + 0.5) * cw, tops[px]);
+      else ctx.moveTo(x + 0.5 * cw, tops[px]);
+    }
+    ctx.stroke();
+
+    // 基线
+    ctx.strokeStyle = INK; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, base + 0.5); ctx.lineTo(x + w, base + 0.5); ctx.stroke();
+
+    // 停留：基线下面的深色短条
+    var step = w / nb;
+    ctx.fillStyle = STOP;
+    for (k = 0; k < nb; k++) {
+      if (bins[k].stop > 0.02) ctx.fillRect(x + k * step, base + 2.5, Math.max(1.5, step - 0.5), big ? 7 : 5);
+    }
+
+    // 公里刻度
+    var total = spec.total || 0;
+    if (total > 0) {
+      var st = kmStep(total, w, big ? 90 : 48), v, cxp;
+      ctx.fillStyle = INK; ctx.font = font(fs); ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      for (v = st; v * 1000 < total; v += st) {
+        cxp = x + v * 1000 / total * w;
+        ctx.fillRect(cxp - 0.5, base + 1, 1, big ? 8 : 4);
+        ctx.fillStyle = '#4a5a75';
+        ctx.fillText(String(v), cxp, base + (big ? 12 : 7));
+        ctx.fillStyle = INK;
+      }
+    }
+  }
+
+  /** 播放位置：右边压一层浅色，左边是已经跑过的 */
+  function drawCursor(ctx, x, y, w, h, frac, big) {
+    if (!isNum(frac)) return;
+    var base = stripBase(y, h, big), cx = x + clamp(frac, 0, 1) * w;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x, y, w, base - y); ctx.clip();
+    ctx.fillStyle = 'rgba(255,255,255,0.38)';
+    ctx.fillRect(cx, y, x + w - cx, base - y);
+    ctx.restore();
+    ctx.strokeStyle = INK; ctx.lineWidth = big ? 3 : 2;
+    ctx.beginPath(); ctx.moveTo(cx + 0.5, y); ctx.lineTo(cx + 0.5, base); ctx.stroke();
+    ctx.fillStyle = INK;
+    ctx.beginPath();
+    ctx.moveTo(cx, base + 0.5);
+    ctx.lineTo(cx - (big ? 7 : 5), base + (big ? 13 : 8));
+    ctx.lineTo(cx + (big ? 7 : 5), base + (big ? 13 : 8));
+    ctx.closePath(); ctx.fill();
+  }
+
+  /** 路线图：只画形状，不要底图。已经跑过的部分是彩色，没跑的是浅灰。
+   *  spec: { shape, progress(0~1), color, scale(线宽倍数), pad } */
+  function drawRoute(ctx, x, y, w, h, spec) {
+    var sh = spec.shape, xs = sh.x, ys = sh.y, n = sh.n, i, lw = spec.scale || 1, pad = spec.pad === undefined ? 14 : spec.pad;
+    if (!n) return;
+    var x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (i = 0; i < n; i++) {
+      if (xs[i] < x0) x0 = xs[i]; if (xs[i] > x1) x1 = xs[i];
+      if (ys[i] < y0) y0 = ys[i]; if (ys[i] > y1) y1 = ys[i];
+    }
+    var dx = Math.max(x1 - x0, 1e-9), dy = Math.max(y1 - y0, 1e-9);
+    var sc = Math.min((w - 2 * pad) / dx, (h - 2 * pad) / dy);
+    var ox = x + (w - dx * sc) / 2 - x0 * sc, oy = y + (h - dy * sc) / 2 - y0 * sc;
+    function PX(k) { return xs[k] * sc + ox; }
+    function PY(k) { return ys[k] * sc + oy; }
+
+    ctx.save();
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.strokeStyle = MUTE; ctx.lineWidth = 3 * lw;
+    ctx.beginPath();
+    for (i = 0; i < n; i++) { if (i) ctx.lineTo(PX(i), PY(i)); else ctx.moveTo(PX(i), PY(i)); }
+    ctx.stroke();
+
+    var p = clamp(spec.progress === undefined ? 1 : spec.progress, 0, 1), j = 0;
+    while (j < n - 2 && sh.fr[j + 1] <= p) j++;
+    var du = sh.fr[j + 1] - sh.fr[j], u = du > 0 ? clamp((p - sh.fr[j]) / du, 0, 1) : 0;
+    var cx = PX(j) + (PX(j + 1) - PX(j)) * u, cy = PY(j) + (PY(j + 1) - PY(j)) * u;
+    var col = spec.color || INK;
+    if (p > 0) {
+      ctx.strokeStyle = col; ctx.lineWidth = 4.2 * lw;
+      ctx.beginPath(); ctx.moveTo(PX(0), PY(0));
+      for (i = 1; i <= j; i++) ctx.lineTo(PX(i), PY(i));
+      ctx.lineTo(cx, cy); ctx.stroke();
+    }
+    // 起点空心圆、终点实心方块
+    ctx.lineWidth = 2 * lw;
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = INK;
+    ctx.beginPath(); ctx.arc(PX(0), PY(0), 4 * lw, 0, 6.3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = INK;
+    ctx.fillRect(PX(n - 1) - 4 * lw, PY(n - 1) - 4 * lw, 8 * lw, 8 * lw);
+    // 当前位置：白心 + 彩色粗圈，外面再套一圈淡的，压在山形上也看得清
+    if (p < 1 && spec.dot !== false) {
+      ctx.strokeStyle = col; ctx.lineWidth = 1.4 * lw;
+      ctx.beginPath(); ctx.arc(cx, cy, 12 * lw, 0, 6.3); ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.strokeStyle = col; ctx.lineWidth = 3.2 * lw;
+      ctx.beginPath(); ctx.arc(cx, cy, 6.5 * lw, 0, 6.3); ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** 画在页面里的赛道条。底图缓存起来，回放时只重画光标。
+   *  spec 里的 key 变了（换了轨迹或换算曲线）才重画底图。canvas 上留一份布局，点它时换算里程用。 */
+  function strip(canvas, spec) {
+    var W = boxW(canvas, 600), H = spec.height || 150;
+    var ctx = prep(canvas, W, H);
+    var key = W + 'x' + H + '|' + (spec.key || '') + '|' + ((spec.bins || []).length);
+    if (!canvas._base || canvas._baseKey !== key) {
+      var dpr = Math.min(window.devicePixelRatio || 1, 2.5), cv = canvas._base || (canvas._base = document.createElement('canvas'));
+      cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+      var bctx = cv.getContext('2d');
+      bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      bctx.fillStyle = '#fff'; bctx.fillRect(0, 0, W, H);
+      paintStrip(bctx, 4, 0, W - 8, H, spec);
+      canvas._baseKey = key;
+    }
+    ctx.drawImage(canvas._base, 0, 0, W, H);
+    drawCursor(ctx, 4, 0, W - 8, H, spec.cursor, !!spec.big);
+    canvas._strip = { x0: 4, x1: W - 4, total: spec.total || 0 };
+  }
+
+  /** 画在页面里的路线图 */
+  function route(canvas, spec) {
+    var W = boxW(canvas, 400), H = spec.height || 340;
+    var ctx = prep(canvas, W, H);
+    drawRoute(ctx, 0, 0, W, H, spec);
+    canvas._route = { W: W, H: H };
+  }
+
+  /** 画布的可用宽度：按容器的宽度减去左右内边距算，容器还没显示时用一个默认值 */
+  function boxW(canvas, dflt) {
+    var p = canvas.parentNode;
+    if (!p) return dflt;
+    var cs = window.getComputedStyle(p);
+    var w = p.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+    return w > 40 ? w : dflt;
+  }
+
+  /** 分享卡片：1080×1350 的 PNG。spec: { name, subtitle, color, shape, bins, palette, total, stats: [{ k, v, u }], foot, foot2 } */
+  function card(spec) {
+    var W = 1080, H = 1350, cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    var ctx = cv.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = INK; ctx.lineWidth = 3; ctx.strokeRect(25.5, 25.5, W - 51, H - 51);
+
+    ctx.fillStyle = INK; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.font = font(52, true, TF);
+    var title = String(spec.name || '未命名');
+    while (title.length > 1 && ctx.measureText(title).width > 920) title = title.slice(0, title.length - 2) + '…';
+    ctx.fillText(title, 68, 138);
+    ctx.font = font(23);
+    ctx.fillStyle = '#4a5a75';
+    ctx.fillText(spec.subtitle || '', 68, 180);
+    ctx.fillStyle = INK;
+    ctx.fillRect(68, 202, 120, 4);
+
+    // 路线：只画形状，跑过的部分用轨迹颜色
+    drawRoute(ctx, 60, 232, 960, 520, { shape: spec.shape, progress: 1, color: spec.color, scale: 1.5, pad: 20, dot: false });
+
+    // 赛道条
+    ctx.fillStyle = '#fff'; ctx.fillRect(68, 786, 944, 210);
+    paintStrip(ctx, 68, 786, 944, 210, { bins: spec.bins, total: spec.total, palette: spec.palette, big: true, cursor: null });
+    ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.strokeRect(68, 786, 944, 210);
+
+    // 四个数字
+    var stats = spec.stats || [], i, sw = 944 / Math.max(stats.length, 1);
+    for (i = 0; i < stats.length; i++) {
+      var sx = 68 + i * sw;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#4a5a75'; ctx.font = font(21);
+      ctx.fillText(stats[i].k, sx, 1076);
+      ctx.fillStyle = INK; ctx.font = font(52, true, TF);
+      var v = String(stats[i].v);
+      while (v.length > 1 && ctx.measureText(v).width > sw - 24) v = v.slice(0, v.length - 1);
+      var vw = ctx.measureText(v).width;
+      ctx.fillText(v, sx, 1132);
+      if (stats[i].u) {
+        ctx.fillStyle = '#4a5a75'; ctx.font = font(18);
+        ctx.fillText(stats[i].u, sx + vw + 8, 1132);
+      }
+    }
+    ctx.strokeStyle = MUTE; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(68, 1210); ctx.lineTo(1012, 1210); ctx.stroke();
+    ctx.fillStyle = '#4a5a75'; ctx.font = font(21); ctx.textAlign = 'left';
+    ctx.fillText(spec.foot || '', 68, 1256);
+    ctx.textAlign = 'right';
+    ctx.fillText(spec.foot2 || '', 1012, 1256);
+    ctx.textAlign = 'left';
+    return cv;
+  }
+
+  /** 把画布存成 PNG */
+  function save(canvas, name, cb) {
+    if (!canvas.toBlob) { cb(false); return; }
+    canvas.toBlob(function (blob) {
+      if (!blob) { cb(false); return; }
+      var url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+      cb(true);
+    }, 'image/png');
+  }
+
+  /** 复制到剪贴板（浏览器不支持时返回 false，由调用方改存文件） */
+  function copy(canvas, cb) {
+    if (!navigator.clipboard || !window.ClipboardItem || !canvas.toBlob) { cb(false); return; }
+    canvas.toBlob(function (blob) {
+      if (!blob) { cb(false); return; }
+      var item;
+      try { item = new window.ClipboardItem({ 'image/png': blob }); } catch (e) { cb(false); return; }
+      navigator.clipboard.write([item]).then(function () { cb(true); }, function () { cb(false); });
+    }, 'image/png');
+  }
+
+  return { strip: strip, route: route, card: card, save: save, copy: copy, makeRamp: makeRamp, colorOf: colorOf, kmStep: kmStep };
+})();
+
+// ===== show3d.js =====
+/* 回放的 3D 视角。做法照搬 compare/same_route.py 里那张 3D 图：
+ * 把轨迹画成「东 × 北 × 海拔」的一条折线，海拔按 2.5 倍夸张，线按这一段比平时快（绿）慢（红）上色，
+ * 每 250 米一根铅垂线落到底面，地面上画一条同样的投影，再标上公里数。
+ * 和那边不同的是可以拖：横向拖动转圈，竖向拖动改俯角，滚轮缩放，Shift 或右键拖动平移。
+ * 不用 WebGL，也不用联网：自己算透视投影，画在 canvas 2D 上。
+ */
+var TRShow3D = (function () {
+  'use strict';
+
+  var INK = '#14284b', MUTE = '#c9d0db', GRID = '#e8ecf2', FLOOR = '#f8f9fb', LBL = '#4a5a75';
+  var FF = 'Inter,"Helvetica Neue",Helvetica,Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif';
+  function font(px, bold) { return (bold ? 'bold ' : '') + px + 'px ' + FF; }
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  function isNum(v) { return v !== null && v !== undefined && isFinite(v); }
+
+  /** 画布可用宽度（容器的宽度减去左右内边距） */
+  function boxW(canvas, dflt) {
+    var p = canvas.parentNode;
+    if (!p) return dflt;
+    var cs = window.getComputedStyle(p);
+    var w = p.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+    return w > 40 ? w : dflt;
+  }
+
+  /** 公里刻度的间隔：既让刻度不挤在一起，也别只有两三个 */
+  function niceKm(span) {
+    var list = [0.2, 0.5, 1, 2, 5, 10, 20, 50], i;
+    for (i = 0; i < list.length; i++) if (span / list[i] <= 6) return list[i];
+    return list[list.length - 1];
+  }
+
+  function make(canvas, opts) {
+    opts = opts || {};
+    var H = opts.height || 320, W = 0, dpr = 1;
+    var data = null, ramp = null, bins = null, total = 0;
+    // 相机：绕 (tx, ty, pz) 这个点转，那个点永远画在画面正中——和 3D 地图用的是同一套
+    var cam = { az: -0.4, pitch: 0.72, dist: 3, tx: 0, ty: 0 }, pz = 0;
+    var exag = opts.exag || 2.5, progress = 0;
+    var box = null, raf = 0, dead = false, drag = null, pinch = null, needFit = true;
+
+    function focal() { return H * 1.15; }
+
+    function redraw() {
+      if (raf || dead) return;
+      raf = (window.requestAnimationFrame || function (f) { return setTimeout(f, 16); })(draw);
+    }
+
+    function prep() {
+      W = boxW(canvas, 420);
+      dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+      canvas.style.width = W + 'px';
+      canvas.style.height = H + 'px';
+      canvas.width = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+      var ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+      return ctx;
+    }
+
+    /** 相机：从旋转中心往后上方退 dist 公里，绕 az 转、抬到 pitch 角，返回投影要用的基向量 */
+    function camera() {
+      var cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch), sa = Math.sin(cam.az), ca = Math.cos(cam.az);
+      var eye = { x: cam.tx - sa * cp * cam.dist, y: cam.ty - ca * cp * cam.dist, z: pz + sp * cam.dist };
+      var fx = cam.tx - eye.x, fy = cam.ty - eye.y, fz = pz - eye.z;
+      var fl = Math.sqrt(fx * fx + fy * fy + fz * fz) || 1;
+      fx /= fl; fy /= fl; fz /= fl;
+      var rx = fy, ry = -fx, rz = 0;                     // right = cross(前, 上)，az=0 时正好朝东
+      var rl = Math.sqrt(rx * rx + ry * ry) || 1;
+      rx /= rl; ry /= rl;
+      var ux = ry * fz - rz * fy, uy = rz * fx - rx * fz, uz = rx * fy - ry * fx;   // up = cross(右, 前)
+      return { eye: eye, f: [fx, fy, fz], r: [rx, ry, rz], u: [ux, uy, uz], focal: focal() };
+    }
+
+    function project(p, c) {
+      var dx = p.x - c.eye.x, dy = p.y - c.eye.y, dz = p.z - c.eye.z;
+      var zc = dx * c.f[0] + dy * c.f[1] + dz * c.f[2];
+      if (zc < 0.02) return null;
+      return {
+        x: W / 2 + (dx * c.r[0] + dy * c.r[1] + dz * c.r[2]) / zc * c.focal,
+        y: H / 2 - (dx * c.u[0] + dy * c.u[1] + dz * c.u[2]) / zc * c.focal,
+        z: zc
+      };
+    }
+
+    function zk(m) { return m / 1000 * exag; }        // 海拔米 → 公里，带夸张
+
+    /** 换了轨迹或夸张倍数：重新算包围盒，把相机摆回默认角度。画布宽度要等第一次画才知道，所以留到 draw 里做 */
+    function fit() {
+      if (!data) return;
+      if (!W || !H) { needFit = true; return; }
+      var x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z0 = Infinity, z1 = -Infinity, i;
+      for (i = 0; i < data.n; i++) {
+        if (data.x[i] < x0) x0 = data.x[i]; if (data.x[i] > x1) x1 = data.x[i];
+        if (data.y[i] < y0) y0 = data.y[i]; if (data.y[i] > y1) y1 = data.y[i];
+        if (data.z[i] < z0) z0 = data.z[i]; if (data.z[i] > z1) z1 = data.z[i];
+      }
+      if (!isFinite(x0)) { x0 = x1 = y0 = y1 = z0 = z1 = 0; }
+      box = { x0: x0, x1: x1, y0: y0, y1: y1, z0: z0, z1: z1 };
+      cam.tx = (x0 + x1) / 2; cam.ty = (y0 + y1) / 2;
+      pz = zk((z0 + z1) / 2);
+      cam.az = -0.4; cam.pitch = 0.72;
+      // 按画面大小定距离：横向、纵向都要装得下，留 18% 的边
+      var hx = Math.max(x1 - x0, 0.2), hy = Math.max(y1 - y0, 0.2), hz = Math.max(zk(z1 - z0), 0.02);
+      var vert = hy * Math.sin(cam.pitch) + hz * Math.cos(cam.pitch);
+      var s = 0.82 * Math.min(W / hx, H / Math.max(vert, 0.02));
+      cam.dist = focal() / Math.max(1e-6, s);
+      clampCam();
+    }
+
+    /** 相机别推到太近或太远，俯角别翻过去 */
+    function clampCam() {
+      cam.pitch = clamp(cam.pitch, 0.06, 1.53);
+      if (box) {
+        var span = Math.max(box.x1 - box.x0, box.y1 - box.y0, 0.3);
+        cam.dist = clamp(cam.dist, span * 0.04, span * 12);
+      }
+    }
+
+    /** 数据：points 来自 TR.localKm，binList 是赛道条的格子（用来上色） */
+    function setData(points, binList, palette) {
+      data = points;
+      bins = binList || [];
+      ramp = TRShow.makeRamp(palette && palette.length ? palette : ['#9aa0a6']);
+      // 这条路的实际长度（公里）：抽稀后的折线长度，画铅垂线和公里标时要用
+      var km = 0, i;
+      for (i = 1; i < points.n; i++) {
+        var ax = points.x[i] - points.x[i - 1], ay = points.y[i] - points.y[i - 1];
+        km += Math.sqrt(ax * ax + ay * ay);
+      }
+      total = km > 0 ? km : 1;
+      box = null; needFit = true;
+      redraw();
+    }
+
+    function setProgress(p) { progress = clamp(p || 0, 0, 1); redraw(); }
+    function setExag(v) { exag = v || 2.5; needFit = true; redraw(); }
+    function reset() { needFit = true; redraw(); }
+
+    function colorAt(i) {
+      if (!bins.length) return MUTE;
+      var k = Math.min(bins.length - 1, Math.floor(data.d[i] * bins.length));
+      var dev = bins[k] ? bins[k].dev : null;
+      return isNum(dev) ? ramp((dev + 1) / 2) : MUTE;
+    }
+
+    function draw() {
+      raf = 0;
+      if (dead) return;
+      var ctx = prep();
+      if (!data || data.n < 2) {
+        ctx.fillStyle = '#888'; ctx.font = font(13); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('没有可以画的数据', W / 2, H / 2);
+        return;
+      }
+      if (needFit || !box) { needFit = false; fit(); }
+      var c = camera(), i, p, q;
+
+      // 地面：一块很浅的方形，加上淡淡的网格，让高低有个参照
+      var padX = Math.max((box.x1 - box.x0) * 0.16, 0.15), padY = Math.max((box.y1 - box.y0) * 0.16, 0.15);
+      var gx0 = box.x0 - padX, gx1 = box.x1 + padX, gy0 = box.y0 - padY, gy1 = box.y1 + padY, gz = zk(box.z0);
+      var quad = [project({ x: gx0, y: gy0, z: gz }, c), project({ x: gx1, y: gy0, z: gz }, c),
+        project({ x: gx1, y: gy1, z: gz }, c), project({ x: gx0, y: gy1, z: gz }, c)];
+      if (quad[0] && quad[1] && quad[2] && quad[3]) {
+        ctx.fillStyle = FLOOR;
+        ctx.beginPath();
+        ctx.moveTo(quad[0].x, quad[0].y);
+        for (i = 1; i < 4; i++) ctx.lineTo(quad[i].x, quad[i].y);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = GRID; ctx.lineWidth = 1; ctx.stroke();
+      }
+      var step = niceKm(Math.max(gx1 - gx0, gy1 - gy0));
+      ctx.strokeStyle = GRID; ctx.lineWidth = 1;
+      for (var g = Math.ceil(gx0 / step) * step; g < gx1; g += step) {
+        p = project({ x: g, y: gy0, z: gz }, c); q = project({ x: g, y: gy1, z: gz }, c);
+        if (p && q) { ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); }
+      }
+      for (var g2 = Math.ceil(gy0 / step) * step; g2 < gy1; g2 += step) {
+        p = project({ x: gx0, y: g2, z: gz }, c); q = project({ x: gx1, y: g2, z: gz }, c);
+        if (p && q) { ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); ctx.stroke(); }
+      }
+
+      // 地面上这条路自己的投影
+      ctx.strokeStyle = MUTE; ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      var started = false;
+      for (i = 0; i < data.n; i++) {
+        p = project({ x: data.x[i], y: data.y[i], z: gz }, c);
+        if (!p) { started = false; continue; }
+        if (started) ctx.lineTo(p.x, p.y); else { ctx.moveTo(p.x, p.y); started = true; }
+      }
+      ctx.stroke();
+
+      // 铅垂线：每 250 米一根，从路线垂到地面（和同一个 python 脚本一样）
+      var stepD = Math.min(0.25 / total, 0.5), next = 0;
+      ctx.strokeStyle = MUTE; ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      for (i = 0; i < data.n; i++) {
+        if (data.d[i] < next) continue;
+        next += stepD;
+        p = project({ x: data.x[i], y: data.y[i], z: zk(data.z[i]) }, c);
+        q = project({ x: data.x[i], y: data.y[i], z: gz }, c);
+        if (p && q) { ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y); }
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      // 公里标
+      var kmStep = niceKm(total), nxk = kmStep;
+      ctx.fillStyle = LBL; ctx.font = font(10); ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      for (i = 0; i < data.n; i++) {
+        if (data.d[i] < nxk / total) continue;
+        p = project({ x: data.x[i], y: data.y[i], z: zk(data.z[i]) }, c);
+        if (p) ctx.fillText(String(Math.round(nxk)), p.x, p.y - 10);
+        nxk += kmStep;
+      }
+
+      // 先铺一条白色底：让路线从一堆铅垂线里跳出来
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 6.5; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.beginPath();
+      var halo = false;
+      for (i = 0; i < data.n; i++) {
+        p = project({ x: data.x[i], y: data.y[i], z: zk(data.z[i]) }, c);
+        if (!p) { halo = false; continue; }
+        if (halo) ctx.lineTo(p.x, p.y); else { ctx.moveTo(p.x, p.y); halo = true; }
+      }
+      ctx.stroke();
+
+      // 路线：按颜色分段画，跑过的实、没跑到的淡
+      var curKey = null, open = false;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      function flush() { if (open) { ctx.stroke(); open = false; } }
+      for (i = 0; i < data.n - 1; i++) {
+        var done = data.d[i] <= progress;
+        var key = colorAt(i) + (done ? '|1' : '|0');
+        p = project({ x: data.x[i], y: data.y[i], z: zk(data.z[i]) }, c);
+        q = project({ x: data.x[i + 1], y: data.y[i + 1], z: zk(data.z[i + 1]) }, c);
+        if (!p || !q) { flush(); curKey = null; continue; }
+        if (key !== curKey) {
+          flush();
+          curKey = key;
+          ctx.strokeStyle = colorAt(i);
+          ctx.globalAlpha = done ? 1 : 0.26;
+          ctx.lineWidth = done ? 3.2 : 2.4;
+          ctx.beginPath(); ctx.moveTo(p.x, p.y);
+          open = true;
+        }
+        ctx.lineTo(q.x, q.y);
+      }
+      flush();
+      ctx.globalAlpha = 1;
+
+      // 起点三角、终点方块
+      var s0 = project({ x: data.x[0], y: data.y[0], z: zk(data.z[0]) }, c);
+      var s1 = project({ x: data.x[data.n - 1], y: data.y[data.n - 1], z: zk(data.z[data.n - 1]) }, c);
+      if (s0) {
+        ctx.fillStyle = INK; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(s0.x, s0.y - 7); ctx.lineTo(s0.x + 6, s0.y + 4); ctx.lineTo(s0.x - 6, s0.y + 4);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
+      if (s1) {
+        ctx.fillStyle = INK; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+        ctx.fillRect(s1.x - 4.5, s1.y - 4.5, 9, 9);
+        ctx.strokeRect(s1.x - 4.5, s1.y - 4.5, 9, 9);
+      }
+
+      // 当前位置：一根竖着的杆子，头上一个圆点，地面留个影子
+      var ci = 0;
+      for (i = 0; i < data.n - 1; i++) if (data.d[i + 1] <= progress) ci = i + 1; else break;
+      var cp2 = { x: data.x[ci], y: data.y[ci], z: zk(data.z[ci]) };
+      var top = project(cp2, c), bot = project({ x: cp2.x, y: cp2.y, z: gz }, c);
+      if (top && bot) {
+        ctx.strokeStyle = INK; ctx.globalAlpha = 0.5; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(top.x, top.y); ctx.lineTo(bot.x, bot.y); ctx.stroke();
+        ctx.globalAlpha = 1;
+        if (bot && project({ x: cp2.x, y: cp2.y, z: gz }, c)) {
+          ctx.fillStyle = 'rgba(20,40,75,0.15)';
+          ctx.beginPath(); ctx.ellipse(bot.x, bot.y, 7, 3.5, 0, 0, 6.3); ctx.fill();
+        }
+        var col = colorAt(ci);
+        ctx.strokeStyle = col; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.arc(top.x, top.y, 11, 0, 6.3); ctx.stroke();
+        ctx.fillStyle = '#fff'; ctx.strokeStyle = col; ctx.lineWidth = 3.2;
+        ctx.beginPath(); ctx.arc(top.x, top.y, 6, 0, 6.3); ctx.fill(); ctx.stroke();
+      }
+
+      // 右下角的提示
+      ctx.fillStyle = 'rgba(74,90,117,0.85)'; ctx.font = font(11); ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+      ctx.fillText('拖动旋转 · 滚轮缩放 · Shift 或右键平移', W - 8, H - 6);
+    }
+
+    // ---------------- 交互（和 3D 地图同一套手感） ----------------
+    // 拖动是手控的：转到哪就是哪，松手立刻停，没有后效
+    var AZMIN = 0.06, AZMAX = 1.53;
+    /** 屏幕上那个点有没有被插进地面：旋转中心永远在画面正中，所以拖动时画面绕中心转 */
+    function panBy(dx, dy) {
+      var k = cam.dist / focal();
+      var rx = Math.cos(cam.az), ry = -Math.sin(cam.az), fx = Math.sin(cam.az), fy = Math.cos(cam.az);
+      cam.tx += (-dx * rx + dy * fx) * k;
+      cam.ty += (-dx * ry + dy * fy) * k;
+    }
+    /**
+     * 旋转方向看从哪里开始拖：手按住的那块地面跟着手走，整个画面绕画面中心转。
+     * 从画面下半部分（离自己近的一侧）开始向右拖，近处往右转；从上半部分（远的一侧）开始向右拖，远处往右转。
+     */
+    function turnSign(clientY) {
+      var r = canvas.getBoundingClientRect();
+      return clientY - r.top >= r.height / 2 ? 1 : -1;
+    }
+
+    function onDown(ev) {
+      if (ev.button !== 0 && ev.button !== 2) return;
+      drag = { x: ev.clientX, y: ev.clientY, pan: ev.button !== 0 || ev.shiftKey || ev.ctrlKey, turn: turnSign(ev.clientY) };
+      canvas.style.cursor = 'grabbing';
+      ev.preventDefault();
+    }
+    function onMove(ev) {
+      if (!drag) return;
+      var dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
+      drag.x = ev.clientX; drag.y = ev.clientY;
+      // 上下拖是改俯仰：向下拖，视角抬高成俯视
+      if (drag.pan) { panBy(dx, dy); }
+      else {
+        cam.az += drag.turn * dx * 0.006;
+        cam.pitch = clamp(cam.pitch + dy * 0.006, AZMIN, AZMAX);
+      }
+      clampCam(); redraw();
+    }
+    function onUp() { drag = null; canvas.style.cursor = 'grab'; }
+    function onWheel(ev) {
+      ev.preventDefault();
+      cam.dist *= Math.exp(clamp(ev.deltaY * (ev.deltaMode === 1 ? 0.05 : 0.0018), -1, 1));
+      clampCam(); redraw();
+    }
+    function onCtx(ev) { ev.preventDefault(); }
+
+    function tdist(t) { var a = t[0].clientX - t[1].clientX, b = t[0].clientY - t[1].clientY; return Math.sqrt(a * a + b * b); }
+    function onTouchStart(ev) {
+      if (ev.touches.length === 1) {
+        drag = { x: ev.touches[0].clientX, y: ev.touches[0].clientY, turn: turnSign(ev.touches[0].clientY), pan: false };
+        pinch = null;
+      } else if (ev.touches.length === 2) {
+        pinch = { d: tdist(ev.touches), x: (ev.touches[0].clientX + ev.touches[1].clientX) / 2, y: (ev.touches[0].clientY + ev.touches[1].clientY) / 2 };
+        drag = null;
+      }
+    }
+    function onTouchMove(ev) {
+      if (!drag && !pinch) return;
+      ev.preventDefault();
+      if (pinch && ev.touches.length === 2) {
+        var d = tdist(ev.touches);
+        var mx = (ev.touches[0].clientX + ev.touches[1].clientX) / 2, my = (ev.touches[0].clientY + ev.touches[1].clientY) / 2;
+        cam.dist *= pinch.d / Math.max(1, d);
+        panBy(mx - pinch.x, my - pinch.y);
+        pinch = { d: d, x: mx, y: my };
+      } else if (drag && ev.touches.length === 1) {
+        var dx = ev.touches[0].clientX - drag.x, dy = ev.touches[0].clientY - drag.y;
+        cam.az += drag.turn * dx * 0.006;
+        cam.pitch = clamp(cam.pitch + dy * 0.006, AZMIN, AZMAX);
+        drag = { x: ev.touches[0].clientX, y: ev.touches[0].clientY, turn: drag.turn };
+      }
+      clampCam(); redraw();
+    }
+    function onTouchEnd(ev) { if (!ev.touches.length) { drag = null; pinch = null; } }
+
+    canvas.style.cursor = 'grab';
+    canvas.addEventListener('mousedown', onDown);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    canvas.addEventListener('contextmenu', onCtx);
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onTouchEnd);
+    window.addEventListener('resize', redraw);
+
+    return {
+      setData: setData, setProgress: setProgress, setExag: setExag, reset: reset, draw: draw,
+      camera: function () { return { az: cam.az, pitch: cam.pitch, dist: cam.dist, tx: cam.tx, ty: cam.ty, pz: pz }; },
+      destroy: function () {
+        dead = true;
+        canvas.removeEventListener('mousedown', onDown);
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('mouseup', onUp);
+        canvas.removeEventListener('wheel', onWheel);
+        canvas.removeEventListener('contextmenu', onCtx);
+        canvas.removeEventListener('touchstart', onTouchStart);
+        canvas.removeEventListener('touchmove', onTouchMove);
+        canvas.removeEventListener('touchend', onTouchEnd);
+        window.removeEventListener('resize', redraw);
+      }
+    };
+  }
+
+  return make;
 })();
 
 // ===== map2d.js =====
@@ -2819,6 +3819,8 @@ function TRMap3D(root, hooks) {
   var dead = false, raf = 0, W = 0, H = 0, gen = 0, texGen = 0;
   var src = null, entries = [], regionKey = '', showStops = true, exag = 1.5, quality = 'std';
   var scene = null, lines = [], labels = [], cam = { az: -0.4, pitch: 0.7, dist: 1000, tx: 0, ty: 0 };
+  // 第一人称：跟着路线上的一个点往前看。follow 由外面传进来（当前点和前方一点的经纬度、海拔）
+  var follow = null, headYaw = 0, headPitch = 0, eyeH = 20, eyeZ = null, eyeZT = 0;
   var stat = { dem: '', texOk: 0, texFail: 0, texTotal: 0 };
 
   function el(tag, cls) { var e = document.createElement(tag); e.className = cls; root.appendChild(e); return e; }
@@ -2840,7 +3842,7 @@ function TRMap3D(root, hooks) {
 
   function nop() {}
   function deadApi() {
-    return { ok: false, setSource: nop, setEntries: nop, setOptions: nop, resetView: nop, redraw: nop,
+    return { ok: false, setSource: nop, setEntries: nop, setOptions: nop, resetView: nop, redraw: nop, setFollow: nop, followInfo: function () { return null; },
       stats: function () { return stat; }, destroy: function () { root.innerHTML = ''; } };
   }
   var gl = null;
@@ -3308,10 +4310,40 @@ function TRMap3D(root, hooks) {
   function localH(x, y) { return gridHeight(scene.cx + x / scene.C, scene.cy - y / scene.C); }
   function pivotZ() { return ((cam.th === undefined ? scene.iMid : cam.th) - scene.h0) * exag; }
   function viewProj() {
+    if (follow && scene && scene.Hg) return followProj();
     var tz = pivotZ(), cp = Math.cos(cam.pitch), sp = Math.sin(cam.pitch);
     var eye = [cam.tx - Math.sin(cam.az) * cp * cam.dist, cam.ty - Math.cos(cam.az) * cp * cam.dist, tz + sp * cam.dist];
     var ext = Math.max(scene.wm, scene.hm);
     return mul(persp(FOV, W / H, cam.dist / 50, cam.dist * 3 + ext * 2.5), lookAt(eye, [cam.tx, cam.ty, tz]));
+  }
+
+  /** 眼在路线上，朝前看；headYaw / headPitch 是拖动转出来的头部偏转，eyeH 是视点离地高度 */
+  function followProj() {
+    var C = scene.C;
+    function lx(lon) { return (TR.worldX(lon) - scene.cx) * C; }
+    function ly(lat) { return -(TR.worldY(lat) - scene.cy) * C; }
+    var ex = lx(follow.lon), ey = ly(follow.lat), ez = (follow.ele - scene.h0) * exag + eyeH * exag;
+    // 别让镜头钻进山里：脚下的地形可能比轨迹的海拔还高
+    var ground = gridHeight(TR.worldX(follow.lon), TR.worldY(follow.lat));
+    var minEz = (Math.max(ground, follow.ele) - scene.h0) * exag + 1.5 * exag;
+    if (ez < minEz) ez = minEz;
+    // 高程瓦片是几十米一格，贴地飞的时候「别钻进山里」这道限制会一格一格地跳，
+    // 所以最后的高度再按时间低通一次，画面上下就不会一顿一顿的
+    var tnow = (window.performance && window.performance.now) ? window.performance.now() : Date.now();
+    var tdt = eyeZT ? Math.min(0.2, Math.max(0, (tnow - eyeZT) / 1000)) : 0.016;
+    eyeZT = tnow;
+    if (eyeZ === null) eyeZ = ez;
+    else eyeZ += (ez - eyeZ) * (1 - Math.exp(-tdt / 0.25));
+    ez = Math.max(eyeZ, minEz);
+    var hx = lx(follow.headLon), hy = ly(follow.headLat), hz = (follow.headEle - scene.h0) * exag + eyeH * exag;
+    var dx = hx - ex, dy = hy - ey, dz = hz - ez;
+    var ca = Math.cos(headYaw), sa = Math.sin(headYaw);
+    var rx = dx * ca - dy * sa, ry = dx * sa + dy * ca;
+    var flat = Math.sqrt(rx * rx + ry * ry) || 1;
+    var ang = Math.atan2(dz, flat) + headPitch, cp = Math.cos(ang), sp = Math.sin(ang);
+    var D = 300;
+    var tx = ex + rx / flat * cp * D, ty = ey + ry / flat * cp * D, tz = ez + sp * D;
+    return mul(persp(FOV, W / H, 1.5, Math.max(20000, (scene.wm + scene.hm) * 2)), lookAt([ex, ey, ez], [tx, ty, tz]));
   }
   /**
    * 把旋转中心挪到画面正中看到的那块地面上，画面本身不动（眼睛的位置和视线方向都不变）。
@@ -3445,9 +4477,11 @@ function TRMap3D(root, hooks) {
   }
 
   // ---------------- 交互 ----------------
-  var drag = null, pinch = null;
+  var drag = null, pinch = null;   // 拖动是手控的：转到哪就是哪，松手立刻停，没有后效
+
+  /** Shift 或右键拖动平移：画面跟着鼠标走 */
   function panBy(dx, dy) {
-    var k = 2 * Math.tan(FOV / 2) * cam.dist / H;
+    var k = 2 * Math.tan(FOV / 2) * cam.dist / Math.max(1, H);
     var rx = Math.cos(cam.az), ry = -Math.sin(cam.az), fx = Math.sin(cam.az), fy = Math.cos(cam.az);
     cam.tx += (-dx * rx + dy * fx) * k; cam.ty += (-dx * ry + dy * fy) * k;
   }
@@ -3460,6 +4494,7 @@ function TRMap3D(root, hooks) {
   }
   function onDown(ev) {
     if (ev.target.tagName === 'BUTTON') return;
+    if (follow) { drag = { x: ev.clientX, y: ev.clientY, look: true }; ev.preventDefault(); return; }
     anchorPivot();
     drag = { x: ev.clientX, y: ev.clientY, pan: ev.button !== 0 || ev.shiftKey || ev.ctrlKey, turn: turnSign(ev.clientY) };
     ev.preventDefault();
@@ -3473,13 +4508,27 @@ function TRMap3D(root, hooks) {
     if (!drag) return;
     var dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
     drag.x = ev.clientX; drag.y = ev.clientY;
+    // 第一人称：按住画面往哪边拖，画面就往哪边走（往右拖=视线往左转），上下拖抬头低头
+    if (drag.look) {
+      headYaw += dx * 0.005;
+      headPitch = Math.max(-0.9, Math.min(0.9, headPitch + dy * 0.004));
+      invalidate();
+      return;
+    }
+    if (drag.pan) { panBy(dx, dy); clampCam(); invalidate(); return; }
     // 上下拖是改俯仰：向下拖，视角抬高成俯视
-    if (drag.pan) panBy(dx, dy); else { cam.az += drag.turn * dx * 0.006; cam.pitch += dy * 0.006; }
+    cam.az += drag.turn * dx * 0.006; cam.pitch += dy * 0.006;
     clampCam(); invalidate();
   }
   function onUp() { drag = null; }
   function onWheel(ev) {
     ev.preventDefault();
+    if (follow) {
+      // 第一人称下滚轮升降视点：站得高看得远，最低贴地
+      eyeH = Math.max(1.2, Math.min(400, eyeH * Math.exp(Math.max(-1, Math.min(1, ev.deltaY * (ev.deltaMode === 1 ? 0.05 : 0.0018))))));
+      invalidate();
+      return;
+    }
     anchorPivot();    cam.dist *= Math.exp(Math.max(-1, Math.min(1, ev.deltaY * (ev.deltaMode === 1 ? 0.05 : 0.0018))));
     clampCam(); invalidate();
   }
@@ -3487,6 +4536,11 @@ function TRMap3D(root, hooks) {
   function tdist(t) { var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
   function onTouchStart(ev) {
     if (ev.target.tagName === 'BUTTON') return;
+    if (follow) {
+      if (ev.touches.length === 1) { drag = { x: ev.touches[0].clientX, y: ev.touches[0].clientY, look: true }; pinch = null; }
+      else if (ev.touches.length === 2) { pinch = { d: tdist(ev.touches) }; drag = null; }
+      return;
+    }
     anchorPivot();
     if (ev.touches.length === 1) { drag = { x: ev.touches[0].clientX, y: ev.touches[0].clientY, turn: turnSign(ev.touches[0].clientY) }; pinch = null; }
     else if (ev.touches.length === 2) {
@@ -3497,12 +4551,26 @@ function TRMap3D(root, hooks) {
   function onTouchMove(ev) {
     if (!drag && !pinch) return;
     ev.preventDefault();
+    if (follow) {
+      if (pinch && ev.touches.length === 2) {
+        var dp = tdist(ev.touches);
+        eyeH = Math.max(1.2, Math.min(400, eyeH * pinch.d / Math.max(1, dp)));
+        pinch = { d: dp };
+      } else if (drag && drag.look && ev.touches.length === 1) {
+        headYaw += (ev.touches[0].clientX - drag.x) * 0.005;
+        headPitch = Math.max(-0.9, Math.min(0.9, headPitch + (ev.touches[0].clientY - drag.y) * 0.004));
+        drag = { x: ev.touches[0].clientX, y: ev.touches[0].clientY, look: true };
+      }
+      invalidate();
+      return;
+    }
     if (pinch && ev.touches.length === 2) {
       var d = tdist(ev.touches), mx = (ev.touches[0].clientX + ev.touches[1].clientX) / 2, my = (ev.touches[0].clientY + ev.touches[1].clientY) / 2;
       cam.dist *= pinch.d / d; panBy(mx - pinch.x, my - pinch.y);
       pinch = { d: d, x: mx, y: my };
     } else if (drag && ev.touches.length === 1) {
-      cam.az += drag.turn * (ev.touches[0].clientX - drag.x) * 0.006; cam.pitch += (ev.touches[0].clientY - drag.y) * 0.006;
+      cam.az += drag.turn * (ev.touches[0].clientX - drag.x) * 0.006;
+      cam.pitch = Math.max(0.06, Math.min(1.53, cam.pitch + (ev.touches[0].clientY - drag.y) * 0.006));
       drag = { x: ev.touches[0].clientX, y: ev.touches[0].clientY, turn: drag.turn };
     }
     clampCam(); invalidate();
@@ -3546,6 +4614,24 @@ function TRMap3D(root, hooks) {
       invalidate();
     },
     resetView: function () { resetCamera(); invalidate(); },
+    /** 第一人称：f 是当前点和前方一点的 { lon, lat, ele, headLon, headLat, headEle }；传 null 退出 */
+    setFollow: function (f) {
+      var was = !!follow;
+      follow = f || null;
+      if (!follow || !was) { headYaw = 0; headPitch = 0; eyeZ = null; }
+      invalidate();
+    },
+    /** 第一人称的视点高度（米，1.2 ~ 400）：推高可以当无人机看整座山 */
+    setEyeH: function (v) {
+      eyeH = Math.max(1.2, Math.min(400, v || 20));
+      invalidate();
+    },
+    followInfo: function () {
+      if (!follow) return null;
+      var ground = scene && scene.Hg ? gridHeight(TR.worldX(follow.lon), TR.worldY(follow.lat)) : follow.ele;
+      return { eyeH: eyeH, headYaw: headYaw, headPitch: headPitch, lon: follow.lon, lat: follow.lat,
+        ele: follow.ele, ground: ground, h0: scene ? scene.h0 : 0, exag: exag };
+    },
     /** 测试用：直接摆相机 */
     setCamera: function (c) { for (var k in c) if (c.hasOwnProperty(k)) cam[k] = c[k]; clampCam(); invalidate(); },
     /** 测试用：读相机、对准旋转中心；以及 (x 向东, y 向北，米，以地形中心为原点) 处的地面画在屏幕的哪个位置（CSS 像素） */
@@ -3592,7 +4678,7 @@ function TRMap3D(root, hooks) {
   var PALETTE = ['#2ca02c', '#9467bd', '#ff7f0e', '#1f77b4', '#d62728', '#8c564b', '#e377c2', '#17becf', '#bcbd22', '#7f7f7f'];
   var SEG_COLORS = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#09969b'];
   var TABS = [
-    ['help', '使用教程'], ['overview', '概览'], ['splits', '每公里分段'], ['profile', '海拔与速度'], ['grade', '坡度表现'], ['terrain', '上下坡'],
+    ['help', '使用教程'], ['overview', '概览'], ['play', '比赛回放'], ['splits', '每公里分段'], ['profile', '海拔与速度'], ['grade', '坡度表现'], ['terrain', '上下坡'],
     ['gap', '坡度修正配速'], ['compare', '两场对比'], ['stops', '停留'], ['itra', 'ITRA 估分'], ['map', '地图']
   ];
 
@@ -3600,7 +4686,10 @@ function TRMap3D(root, hooks) {
     tracks: [], seq: 0, tab: 'help', dirty: {},
     matches: {}, cmpA: null, cmpB: null, cmpAuto: true,
     itra: { curve: TR.ITRA_DEFAULT.slice(), mode: 'raw', pending: false, calId: null, calScore: null, calCat: null, calEkm: null },
-    map: { mode: null, obj: null, src: 'amap-sat', color: 'track', stops: true, km: true, region: 'all', exag: 1.5, quality: 'std', url: '', gcj: false }
+    // 回放：id 是选中的轨迹；frac 是全程进度 0~1；dur 是整场播完要多少秒
+    play: { id: null, frac: 0, speed: 0.2, loop: false, playing: false, raf: 0, last: 0, entry: null, forId: null, binsKey: '', strip: null, shape: null, gain: null,
+      view: '3d', exag: 2.5, v3: null, v3Key: '', eyeH: 20 },
+    map: { mode: null, obj: null, src: 'amap-sat', color: 'track', stops: true, km: true, region: 'all', exag: 1.5, quality: 'std', url: '', gcj: false, fp: false }
   };
 
   function $(id) { return document.getElementById(id); }
@@ -3866,6 +4955,7 @@ function TRMap3D(root, hooks) {
 
   function showTab(id) {
     state.tab = id;
+    if (state.play.playing && id !== 'play' && !(id === 'map' && state.map.fp)) setPlaying(false);
     // 没有轨迹时，除了使用教程，其他标签都只显示一句「还没有载入轨迹」
     var i, btns = $('nav').getElementsByTagName('button'), show = state.tracks.length > 0 || id === 'help';
     for (i = 0; i < btns.length; i++) btns[i].className = btns[i].getAttribute('data-tab') === id ? 'on' : '';
@@ -3879,6 +4969,7 @@ function TRMap3D(root, hooks) {
   function refresh(keepTable) {
     var has = state.tracks.length > 0, i;
     $('trackBox').style.display = has ? '' : 'none';
+    $('btnShare').style.display = has ? '' : 'none';
     if (!keepTable) renderTrackTable();
     state.costKey = null;
     for (i = 0; i < TABS.length; i++) state.dirty[TABS[i][0]] = true;
@@ -4682,6 +5773,199 @@ function TRMap3D(root, hooks) {
     };
   }
 
+  // ======================= 比赛回放 =======================
+  var raf = window.requestAnimationFrame ? function (f) { return window.requestAnimationFrame(f); }
+    : function (f) { return setTimeout(f, 16); };
+  var caf = window.cancelAnimationFrame ? function (h) { window.cancelAnimationFrame(h); } : function (h) { clearTimeout(h); };
+
+  /** 回放看哪一场：下拉栏选的那条；没选或已经被去掉，就取第一条带时间的 */
+  function playEntry() {
+    var p = state.play, e = p.id !== null ? byId(p.id) : null;
+    if (e && !e.visible) e = null;
+    if (!e) { var t = timed(); e = t.length ? t[0] : null; }
+    if (e) p.id = e.id;
+    return e;
+  }
+
+  /** 只有换了轨迹才需要重算的东西：抽稀后的路线、逐点的累计爬升、赛道条 */
+  function playPrep(e) {
+    var p = state.play, tr = e.tr;
+    if (p.forId !== e.id) {
+      p.forId = e.id; p.shape = TR.routeShape(tr, 900); p.gain = TR.gainPrefix(tr); p.frac = 0;
+    }
+    var key = e.id + '|' + (state.costKey || '') + '|' + tr.n;
+    if (p.binsKey !== key) { p.binsKey = key; p.strip = TR.fingerStrip(tr, costCurve(), 260); }
+  }
+
+  var PLAY_CELLS = [['pnD', '距离'], ['pnP', '配速'], ['pnE', '海拔'], ['pnG', '坡度'], ['pnH', '心率'], ['pnR', '已爬升']];
+
+  /** 回放的大号用时：固定写成 时:分:秒，宽度不变，数字不会左右跳 */
+  function fmtClock(sec) {
+    var s = Math.max(0, Math.round(sec || 0)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+    return h + ':' + pad2(m) + ':' + pad2(s % 60);
+  }
+
+  function buildNow() {
+    var h = '<div class="pn main"><span class="pn-k">用时</span><span class="pn-v" id="pnT">--</span></div>', i;
+    for (i = 0; i < PLAY_CELLS.length; i++) {
+      h += '<div class="pn"><span class="pn-k">' + PLAY_CELLS[i][1] + '</span><span class="pn-v" id="' + PLAY_CELLS[i][0] + '">--</span></div>';
+    }
+    $('playNow').innerHTML = h;
+  }
+
+  /** 左边的路线视图：3D（可以拖动）或俯视的平面形状。两边用同一个进度 */
+  function drawRouteView(e, dfrac) {
+    var p = state.play;
+    if (p.view === '2d') {
+      if (p.v3) { p.v3.destroy(); p.v3 = null; p.v3Key = ''; }
+      $('cPlayRoute').style.cursor = 'default';
+      TRShow.route($('cPlayRoute'), { shape: p.shape, progress: dfrac, color: e.color, height: 300 });
+      return;
+    }
+    if (!p.v3) p.v3 = TRShow3D($('cPlayRoute'), { height: 300, exag: p.exag });
+    var key = e.id + '|' + p.exag + '|' + (p.binsKey || '');
+    if (p.v3Key !== key) {
+      p.v3Key = key;
+      p.v3.setExag(p.exag);
+      p.v3.setData(TR.localKm(e.tr, 1400), p.strip ? p.strip.bins : [], RAMPS.slowfast);
+    }
+    p.v3.setProgress(dfrac);
+  }
+
+  /** 第一人称：眼贴着路线往前看，地图跟着回放走。
+   *  路线本身先按里程做过滑动平均，手表录的几米横向抖动不会让镜头左右乱晃；
+   *  朝向对齐前方 1 公里这一段的大方向，不去跟每一个小弯；角度再按真实时间低通一次。 */
+  function drawFollow(at, dfrac) {
+    var m = state.map, p = state.play, e = p.entry;
+    if (!e || !m.obj || m.mode !== '3d' || !m.obj.setFollow) return;
+    var tr = e.tr;
+    if (!p.fpPath || p.fpPathId !== e.id) { p.fpPath = TR.smoothTrack(tr, 1400, 20); p.fpPathId = e.id; p.fpCam = null; }
+    var path = p.fpPath, total = tr.stats.dist || 1;
+    var frac = Math.max(0, Math.min(1, at.d / total));
+
+    // 位置和朝向都按真实时间低通（和设备帧率无关），平滑的细节在 TR.followStep 里
+    var now = (window.performance && window.performance.now) ? window.performance.now() : Date.now();
+    var dt = p.fpLast ? Math.min(0.12, Math.max(0, (now - p.fpLast) / 1000)) : 0.016;
+    p.fpLast = now;
+    if (!p.fpCam) p.fpCam = {};
+    var cam = TR.followStep(p.fpCam, path, frac, total, dt);
+
+    var kx = 111.32 * Math.cos(tr.lat[0] * Math.PI / 180), ky = 111.32;
+    var lon = tr.lon[0] + cam.eye.x / kx, lat = tr.lat[0] + cam.eye.y / ky;
+    var headLon = lon + Math.cos(cam.ang) * 300 / (111320 * Math.max(0.2, Math.cos(tr.lat[0] * Math.PI / 180)));
+    var headLat = lat + Math.sin(cam.ang) * 300 / 110540;
+    m.obj.setFollow({ lon: lon, lat: lat, ele: cam.ele,
+      headLon: headLon, headLat: headLat, headEle: cam.aheadEle });
+    var fi = m.obj.followInfo ? m.obj.followInfo() : null;
+    if (fi) { p.eyeH = fi.eyeH; showEye(fi.eyeH); }
+    if (p.strip) TRShow.strip($('cMapStrip'), { bins: p.strip.bins, total: p.strip.total, palette: RAMPS.slowfast, cursor: dfrac, height: 92, key: 'm|' + p.binsKey });
+  }
+
+  /** 把光标处的读数写进右边那几格 */
+  function drawPlay() {
+    var p = state.play, e = p.entry;
+    if (!e) return;
+    var tr = e.tr, at = TR.replayAt(tr, p.frac);
+    if (!at) return;
+    var total = tr.stats.dist, dfrac = total > 0 ? at.d / total : 0;
+    if (state.map.fp) drawFollow(at, dfrac);
+    if (state.tab !== 'play') return;
+    drawRouteView(e, dfrac);
+    TRShow.strip($('cPlayStrip'), { bins: p.strip.bins, total: p.strip.total, palette: RAMPS.slowfast, cursor: dfrac, height: 140, key: p.binsKey });
+    var gi = Math.min(tr.n - 1, at.i + 1), g = p.gain[at.i] + (p.gain[gi] - p.gain[at.i]) * at.u;
+    $('pnT').innerHTML = at.t === null ? '--' : fmtClock(at.t);
+    $('pnD').innerHTML = (at.d / 1000).toFixed(2) + '<small>km</small>';
+    $('pnP').innerHTML = at.spd > 0.6 ? TR.fmtPace(3600 / at.spd) + '<small>/km</small>' : '<small>停留中</small>';
+    $('pnE').innerHTML = tr.hasEle ? at.ele.toFixed(0) + '<small>m</small>' : '--';
+    $('pnG').innerHTML = tr.hasEle ? signed(at.grd, 0) + '<small>%</small>' : '--';
+    $('pnH').innerHTML = at.hr ? at.hr + '<small>bpm</small>' : '--';
+    $('pnR').innerHTML = tr.hasEle ? '+' + Math.round(g) + '<small>m</small>' : '--';
+  }
+
+  function setPlaying(v) {
+    var p = state.play;
+    if (v && p.frac >= 1) p.frac = 0;
+    p.playing = v; p.last = 0;
+    $('btnPlay').innerHTML = v ? '暂停' : '播放';
+    $('btnPlay').className = 'btn play-btn ' + (v ? 'on' : 'primary');
+    $('btnFpPlay').innerHTML = v ? '暂停' : '播放';
+    $('btnFpPlay').className = 'btn ' + (v ? 'on' : 'primary');
+    if (v) p.raf = raf(tick); else if (p.raf) { caf(p.raf); p.raf = 0; }
+  }
+
+  function tick(ts) {
+    var p = state.play;
+    if (!p.playing) return;
+    if (!p.last) p.last = ts;
+    var dt = (ts - p.last) / 1000;
+    p.last = ts;
+    if (dt > 0.25) dt = 0.25;                 // 切走再切回来时不要一下跳很远
+    // 速度按「每秒前进多少公里」算：最快 1 公里/秒
+    var km = p.entry ? Math.max(0.05, p.entry.tr.stats.dist / 1000) : 1;
+    p.frac += dt * Math.min(1, p.speed) / km;
+    if (p.frac >= 1) {
+      if (p.loop) p.frac -= 1;
+      else { p.frac = 1; drawPlay(); setPlaying(false); return; }
+    }
+    drawPlay();
+    if (p.playing) p.raf = raf(tick);
+  }
+
+  renderers.play = function () {
+    var e = playEntry(), p = state.play;
+    if (combos.play) combos.play.set(trackItems(timed()), e ? e.id : null);
+    if (!e) {
+      if (p.v3) { p.v3.destroy(); p.v3 = null; p.v3Key = ''; }
+      $('playNow').innerHTML = '<div class="empty">没有带时间的轨迹。回放需要文件里记了时间，事先规划的路线放不了。</div>';
+      $('btnPlay').disabled = true;
+      return;
+    }
+    $('btnPlay').disabled = false;
+    p.entry = e;
+    playPrep(e);
+    buildNow();
+    drawPlay();
+  };
+
+  /** 分享图：这一场画成一张 1080×1350 的 PNG */
+  function cardStats(e) {
+    var st = e.tr.stats, km = st.dist / 1000, out = [];
+    if (st.elapsed === null) return [{ k: '距离', v: km.toFixed(2), u: 'km' }];
+    out.push({ k: '用时', v: TR.fmtHms(st.elapsed), u: '' });
+    out.push({ k: '平均配速', v: TR.fmtPace(st.elapsed / km), u: '/km' });
+    out.push({ k: '等效平路速度', v: ((km + st.gain / 100) / (st.elapsed / 3600)).toFixed(1), u: 'km/h' });
+    out.push({ k: '平均心率', v: st.hrAvg ? String(Math.round(st.hrAvg)) : '--', u: 'bpm' });
+    return out;
+  }
+
+  /** 分享图用的一张画布：这一场的形状、赛道条和四个数字 */
+  function buildCard(e) {
+    var st = e.tr.stats, sub = [];
+    if (e.tr.startMs) sub.push(dateStr(e.tr.startMs));
+    sub.push((st.dist / 1000).toFixed(2) + ' km');
+    if (st.gain !== null) sub.push('+' + Math.round(st.gain) + ' m 爬升');
+    if (st.eleMax !== null) sub.push('最高 ' + Math.round(st.eleMax) + ' m');
+    return TRShow.card({
+      name: e.name, subtitle: sub.join('     ·     '), color: e.color,
+      shape: state.play.shape, bins: state.play.strip.bins, total: state.play.strip.total,
+      palette: RAMPS.slowfast, stats: cardStats(e),
+      foot: '越野跑轨迹分析 · 单文件网页版', foot2: '文件只在这台设备的浏览器里处理'
+    });
+  }
+
+  function shareCard() {
+    var e = playEntry();
+    if (!e) return;
+    playPrep(e);
+    var cv = buildCard(e);
+    TRShow.copy(cv, function (ok) {
+      if (ok) { setStatus('分享图已复制到剪贴板，可以直接粘到聊天窗口'); return; }
+      TRShow.save(cv, (e.name || '轨迹') + '.png', function (ok2) {
+        setStatus(ok2 ? '分享图已存成 PNG，在浏览器的下载文件夹里' : '这个浏览器不让存图片，换一个试试');
+      });
+    });
+  }
+
   // ======================= 地图 =======================
   function ramp(stops, n) {
     var out = [], i, k;
@@ -4769,11 +6053,16 @@ function TRMap3D(root, hooks) {
   }
 
   function mapEntries() {
-    var list = vis(), m = state.map, out = [], i;
+    var m = state.map, list = vis(), out = [], i, forced = null;
+    // 回放时只画选中的那一条，地形也只框这一条，高程和贴图能更清楚
+    if (m.fp && m.fpId) {
+      var fe = byId(m.fpId);
+      if (fe && fe.visible) { list = [fe]; forced = fe; }
+    }
     var info = colorize(list, m.color);
     if (!info) { info = colorize(list, 'track'); info.html = '这种着色需要带时间（或心率）的数据，当前轨迹不够，已改回按轨迹着色。'; }
     $('mapLegend').innerHTML = info.html;
-    var one = m.region !== 'all' && byId(m.region) && byId(m.region).visible ? byId(m.region) : null;
+    var one = forced || (m.region !== 'all' && byId(m.region) && byId(m.region).visible ? byId(m.region) : null);
     for (i = 0; i < list.length; i++) {
       out.push({ id: list[i].id, name: list[i].name, color: list[i].color, tr: list[i].tr, cidx: list[i].cidx, palette: list[i].palette,
         stops: list[i].tr.stopList, wpts: list[i].wpts || [], inRegion: one ? list[i] === one : true });
@@ -4803,6 +6092,7 @@ function TRMap3D(root, hooks) {
   function closeMap() {
     var m = state.map;
     if (m.obj) m.obj.destroy();
+    if (m.fp) { m.fp = false; setPlaying(false); }
     m.obj = null; m.mode = null;
     var box = $('mapBox');
     box.className = 'mapbox off';
@@ -4819,6 +6109,60 @@ function TRMap3D(root, hooks) {
     combos.region.set(items, state.map.region);
   }
 
+  /** 视点高度的滑杆：0~100 走对数，低处好调、高处也能拉到几百米 */
+  function eyeToSlider(h) { return Math.max(0, Math.min(100, Math.round(100 * Math.log(h / 1.7) / Math.log(400 / 1.7)))); }
+  function sliderToEye(v) { return 1.7 * Math.pow(400 / 1.7, v / 100); }
+  var eyeShown = -1;
+  function showEye(h) {
+    var m = Math.round(h * 10) / 10;
+    if (Math.abs(m - eyeShown) < 0.1) return;
+    eyeShown = m;
+    $('rngEye').value = String(eyeToSlider(m));
+    $('eyeVal').innerHTML = (m >= 10 ? Math.round(m) : m.toFixed(1)) + ' m';
+  }
+
+  /** 第一人称的几个控件：只在 3D 地图打开、并且进入第一人称时出现 */
+  function syncFpUi() {
+    var m = state.map, on = !!m.fp, p = state.play;
+    $('btnFp').className = 'btn' + (on ? ' on' : '');
+    $('btnFp').innerHTML = on ? '退出第一人称' : '第一人称回放';
+    $('btnFpPlay').style.display = on ? '' : 'none';
+    $('lblFpDur').style.display = on ? '' : 'none';
+    $('mapStripBox').style.display = on ? '' : 'none';
+    $('fpTip').style.display = on ? '' : 'none';
+    $('lblFpTrack').style.display = on ? '' : 'none';
+    $('lblFpEye').style.display = on ? '' : 'none';
+    $('tip3d').style.display = on ? 'none' : '';
+    if (on) { combos.fp.set(trackItems(timed()), state.play.id); eyeShown = -1; showEye(state.play.eyeH || 1.7); }
+    $('btnFpPlay').innerHTML = p.playing ? '暂停' : '播放';
+    $('btnFpPlay').className = 'btn ' + (p.playing ? 'on' : 'primary');
+    $('selSpeed2').value = String(p.speed);
+  }
+
+  function toggleFp() {
+    var m = state.map, e = playEntry();
+    if (!e) { setStatus('第一人称回放需要带时间的轨迹'); return; }
+    if (!m.obj || m.mode !== '3d') openMap('3d');
+    m.fp = !m.fp;
+    if (m.fp) {
+      state.play.entry = e;
+      state.play.id = e.id;
+      state.play.fpLast = 0; state.play.fpPath = null; state.play.fpCam = null;
+      m.fpId = e.id;
+      playPrep(e);
+      if (m.obj && m.obj.setEyeH) m.obj.setEyeH(state.play.eyeH);
+      syncMap();
+      setPlaying(false);          // 点进来先停在起点，想播再按播放
+    } else {
+      setPlaying(false);
+      if (m.obj && m.obj.setFollow) m.obj.setFollow(null);
+      m.fpId = null;
+      syncMap();
+    }
+    syncFpUi();
+    drawPlay();
+  }
+
   function openMap(mode) {
     var list = vis(), m = state.map;
     if (!list.length) return;
@@ -4828,6 +6172,8 @@ function TRMap3D(root, hooks) {
     m.mode = mode;
     $('btnMapOff').style.display = ''; $('bar3d').style.display = mode === '3d' ? '' : 'none'; $('lblKm').style.display = mode === '3d' ? 'none' : '';
     $('btn2d').className = 'btn ' + (mode === '2d' ? 'on' : 'primary'); $('btn3d').className = 'btn ' + (mode === '3d' ? 'on' : 'primary');
+    $('btnFp').style.display = mode === '3d' ? '' : 'none';
+    if (mode !== '3d' && m.fp) { m.fp = false; setPlaying(false); }
     if (mode === '3d') {
       // 轨迹分散在相距很远的几处时，地形范围太大就看不清，默认只取第一条
       if (m.region === 'all' && list.length > 1) {
@@ -4860,6 +6206,7 @@ function TRMap3D(root, hooks) {
     if (m.mode === '3d') fillRegion();
     var en = mapEntries();
     if (m.mode === '3d') m.obj.setEntries(en, en.key); else m.obj.setEntries(en);
+    if (m.fp) drawPlay();
   }
 
   renderers.map = function () { if (!state.map.obj) closeMap(); };
@@ -4878,6 +6225,24 @@ function TRMap3D(root, hooks) {
     $('btn2d').onclick = function () { openMap('2d'); };
     $('btn3d').onclick = function () { openMap('3d'); };
     $('btnMapOff').onclick = closeMap;
+    $('btnFp').onclick = toggleFp;
+    combos.fp = Combo($('selFp'), function (id) {
+      var e = byId(id);
+      if (!e) return;
+      state.play.id = id; state.play.forId = null; state.play.frac = 0;
+      state.play.entry = e; state.map.fpId = id;
+      playPrep(e);
+      syncMap();
+      drawPlay();
+    });
+    $('rngEye').oninput = function () {
+      var h = sliderToEye(parseFloat(this.value) || 0);
+      state.play.eyeH = h;
+      if (state.map.obj && state.map.obj.setEyeH) state.map.obj.setEyeH(h);
+      eyeShown = -1; showEye(h);
+    };
+    $('btnFpPlay').onclick = function () { setPlaying(!state.play.playing); };
+    $('selSpeed2').onchange = function () { state.play.speed = parseFloat(this.value) || 0.2; $('selSpeed').value = this.value; };
     $('selSrc').onchange = function () {
       m.src = this.value;
       try { window.localStorage.setItem('tr.src', m.src); } catch (e) { /* 忽略 */ }
@@ -4897,10 +6262,70 @@ function TRMap3D(root, hooks) {
       if (m.obj) m.obj.setOptions(mapOptions());
     };
     $('selQuality').onchange = function () { m.quality = this.value; if (m.obj) m.obj.setOptions(mapOptions()); };
+    bindStripSeek($('cMapStrip'));
     closeMap();
+    syncFpUi();
   }
 
   // ======================= 启动 =======================
+  /** 点或拖动赛道条跳到任意位置。回放面板和地图下的那条用的是同一套 */
+  function bindStripSeek(canvas) {
+    var dragging = false;
+    function seek(ev) {
+      var L = canvas._strip, e = state.play.entry;
+      if (!L || !L.total || !e) return;
+      var r = canvas.getBoundingClientRect(), f = ((ev.clientX - r.left) - L.x0) / Math.max(1, L.x1 - L.x0);
+      // 横轴是里程，回放按时间走：换算过去，光标才会落在手指底下
+      state.play.frac = TR.timeFrac(e.tr, f < 0 ? 0 : (f > 1 ? 1 : f));
+      drawPlay();
+    }
+    canvas.addEventListener('mousedown', function (ev) {
+      if (ev.button !== 0) return;
+      dragging = true; seek(ev); ev.preventDefault();
+    });
+    window.addEventListener('mousemove', function (ev) { if (dragging) seek(ev); });
+    window.addEventListener('mouseup', function () { dragging = false; });
+    canvas.addEventListener('touchstart', function (ev) {
+      if (ev.touches.length === 1) { seek(ev.touches[0]); ev.preventDefault(); }
+    }, { passive: false });
+    canvas.addEventListener('touchmove', function (ev) {
+      if (ev.touches.length === 1) { seek(ev.touches[0]); ev.preventDefault(); }
+    }, { passive: false });
+  }
+
+  function initPlay() {
+    var p = state.play;
+
+    $('btnPlay').onclick = function () { setPlaying(!p.playing); };
+    $('selSpeed').onchange = function () { p.speed = parseFloat(this.value) || 0.2; $('selSpeed2').value = this.value; };
+    $('chkLoop').onchange = function () { p.loop = this.checked; };
+    $('btnShare').onclick = shareCard;
+    $('selView').onchange = function () {
+      p.view = this.value;
+      $('lblExag').style.display = p.view === '3d' ? '' : 'none';
+      $('btnViewReset').style.display = p.view === '3d' ? '' : 'none';
+      drawPlay();
+    };
+    $('selExag').onchange = function () {
+      p.exag = parseFloat(this.value) || 2.5;
+      if (p.v3) p.v3.setExag(p.exag);
+      p.v3Key = '';
+      drawPlay();
+    };
+    $('btnViewReset').onclick = function () { if (p.v3) p.v3.reset(); };
+    bindStripSeek($('cPlayStrip'));
+
+    // 空格键暂停和继续；在输入框里打字时不拦
+    document.addEventListener('keydown', function (ev) {
+      if (state.tab !== 'play' || !state.tracks.length) return;
+      var tag = ev.target && ev.target.tagName;
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+      if (ev.key === ' ' || ev.key === 'Spacebar' || ev.code === 'Space') {
+        ev.preventDefault(); setPlaying(!p.playing);
+      }
+    });
+  }
+
   function init() {
     var h = '', i, timer = 0;
     for (i = 0; i < TABS.length; i++) h += '<button type="button" data-tab="' + TABS[i][0] + '"><span>' + TABS[i][1] + '</span></button>';
@@ -4938,6 +6363,8 @@ function TRMap3D(root, hooks) {
     combos.b = Combo($('selB'), function (id) { state.cmpB = id; renderers.compare(); });
     combos.region = Combo($('selRegion'), function (id) { state.map.region = id; syncMap(); });
     combos.itra = Combo($('selItra'), function () {});
+    combos.play = Combo($('selPlay'), function (id) { state.play.id = id; state.play.forId = null; renderers.play(); });
+    initPlay();
     initInput(); initTrackTable(); initMap(); initItra();
     $('selX').onchange = function () { renderers.profile(); };
     $('selCk').onchange = function () { renderers.compare(); };
@@ -4953,7 +6380,8 @@ function TRMap3D(root, hooks) {
     refresh();
   }
 
-  window.TRApp = { state: state, combos: combos, addFiles: addFiles, showTab: showTab, openMap: openMap, closeMap: closeMap };
+  window.TRApp = { state: state, combos: combos, addFiles: addFiles, showTab: showTab, openMap: openMap, closeMap: closeMap,
+    cardCanvas: function () { var e = playEntry(); if (!e) return null; playPrep(e); return buildCard(e); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
 

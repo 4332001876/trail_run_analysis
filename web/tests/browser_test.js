@@ -30,7 +30,7 @@ function note(name, okFlag, detail) { results.push({ name, ok: !!okFlag, detail 
     const hs = await b.eval(`(function () { var s = document.querySelector('.step h3'), p = document.querySelector('.step p'), h2 = document.querySelector('.help h2'), body = getComputedStyle(document.body);
       return { step: parseFloat(getComputedStyle(s).fontSize), stepP: parseFloat(getComputedStyle(p).fontSize), h2: parseFloat(getComputedStyle(h2).fontSize), body: parseFloat(body.fontSize),
         steps: document.querySelectorAll('.step').length, cards: document.querySelectorAll('.card').length, row: [].map.call(document.querySelectorAll('.step'), function (x) { return Math.round(x.getBoundingClientRect().top); }) }; })()`);
-    note('教程：三步开始是页面上最大的字，三张卡片排成一行', hs.steps === 3 && hs.cards === 10 && hs.step >= 24 && hs.stepP >= 16 && hs.step > hs.h2 && hs.row[0] === hs.row[1] && hs.row[1] === hs.row[2], JSON.stringify(hs));
+    note('教程：三步开始是页面上最大的字，三张卡片排成一行', hs.steps === 3 && hs.cards === 11 && hs.step >= 24 && hs.stepP >= 16 && hs.step > hs.h2 && hs.row[0] === hs.row[1] && hs.row[1] === hs.row[2], JSON.stringify(hs));
     const sec = await b.eval(`(function () { var s = document.querySelectorAll('#p-help .hsec'), out = { n: s.length, gaps: [], heads: [], panelBorder: getComputedStyle(document.getElementById('p-help')).borderTopWidth };
       for (var i = 0; i < s.length; i++) { var r = s[i].getBoundingClientRect(); if (i) out.gaps.push(Math.round(r.top - s[i - 1].getBoundingClientRect().bottom));
         out.heads.push(getComputedStyle(s[i].querySelector('h2')).backgroundColor); }
@@ -59,8 +59,8 @@ function note(name, okFlag, detail) { results.push({ name, ok: !!okFlag, detail 
       for (i = 0; i < sh.length; i++) { var w = getComputedStyle(sh[i]).strokeWidth; if (out.picStroke.indexOf(w) < 0) out.picStroke.push(w); }
       var ar = document.querySelector('#p-help .step-arrow path'); out.arrowFill = getComputedStyle(ar).fill;
       return out; })()`);
-    note('教程：三步各有一张图示、一句话，用圆形编号和红箭头连起来；十张标签卡片各有图标',
-      pic.stepPics === 3 && pic.cardPics === 10 && pic.arrows === 2 && pic.maxText <= 30 && pic.arrowFill === 'rgb(227, 38, 47)' &&
+    note('教程：三步各有一张图示、一句话，用圆形编号和红箭头连起来；十一个标签卡片各有图标',
+      pic.stepPics === 3 && pic.cardPics === 11 && pic.arrows === 2 && pic.maxText <= 30 && pic.arrowFill === 'rgb(227, 38, 47)' &&
       pic.dots.join('|') === ['1', '2', '3'].map(n => n + ' 48x48 50% ' + INK).join('|') && pic.picStroke.every(w => w === '2px' || w === '4px'), JSON.stringify(pic));
     const fonts = await b.eval(`(function () { return { body: getComputedStyle(document.body).fontFamily, h: getComputedStyle(document.querySelector('.top h1')).fontFamily }; })()`);
     note('设计：正文用 Helvetica / Arial 一类的无衬线体，标题用 DIN 一类的标识字体', /^Inter, "Helvetica Neue", Helvetica, Arial/.test(fonts.body) && /^"DIN Alternate", Bahnschrift/.test(fonts.h), JSON.stringify(fonts));
@@ -75,7 +75,7 @@ function note(name, okFlag, detail) { results.push({ name, ok: !!okFlag, detail 
     await b.sleep(150);
     const navClick = await b.eval(`TRApp.state.tab`);
     await b.click('#nav button[data-tab="help"]');
-    note('导航栏每个标签都有图标，和教程卡片用的是同一套；点图标也能切换', navIco.buttons === 11 && navIco.withIcon === 11 && navIco.sameAsCard === 10 && navClick === 'stops', JSON.stringify(navIco) + ' 点图标后 -> ' + navClick);
+    note('导航栏每个标签都有图标，和教程卡片用的是同一套；点图标也能切换', navIco.buttons === 12 && navIco.withIcon === 12 && navIco.sameAsCard === 11 && navClick === 'stops', JSON.stringify(navIco) + ' 点图标后 -> ' + navClick);
     const r0 = await b.eval(RADIUS_JS);    note('圆角不超过 8px（没有轨迹时）', r0.max <= 8 && r0.n > 100, JSON.stringify(r0));
     await b.click('#p-help .card[data-go="stops"]');
     note('没有轨迹时点教程里的卡片，提示先载入', await b.eval(`TRApp.state.tab === 'stops' && /on/.test(document.getElementById('noData').className) && document.querySelector('#nav button.on').innerText === '停留'`));
@@ -93,7 +93,7 @@ function note(name, okFlag, detail) { results.push({ name, ok: !!okFlag, detail 
     console.log('轨迹: ' + JSON.stringify(await b.eval(`TRApp.state.tracks.map(function (e) { return e.name + ' | ' + e.info + ' | ' + e.color; })`)));
 
     await b.click(`#nav button[data-tab="help"]`);
-    for (const t of ['overview', 'splits', 'profile', 'grade', 'terrain', 'gap', 'compare', 'stops', 'itra', 'map']) {
+    for (const t of ['overview', 'play', 'splits', 'profile', 'grade', 'terrain', 'gap', 'compare', 'stops', 'itra', 'map']) {
       if (!(await b.eval(`!!document.querySelector('#p-help .card[data-go="${t}"]')`))) { note('教程卡片 ' + t, false, '找不到卡片'); continue; }
     }
     await b.click('#p-help .card[data-go="grade"]');
@@ -104,7 +104,7 @@ function note(name, okFlag, detail) { results.push({ name, ok: !!okFlag, detail 
     await b.shot(path.join(outDir, '0_help_loaded.png'), { full: true });
 
     // ---- 逐个面板截图，检查图表都画出来了 ----
-    const tabs = ['help', 'overview', 'splits', 'profile', 'grade', 'terrain', 'gap', 'compare', 'stops', 'itra'];
+    const tabs = ['help', 'overview', 'play', 'splits', 'profile', 'grade', 'terrain', 'gap', 'compare', 'stops', 'itra'];
     const allCaps = [], missingCaps = [];
     for (const t of tabs) {
       await b.click(`#nav button[data-tab="${t}"]`);
@@ -127,6 +127,80 @@ function note(name, okFlag, detail) { results.push({ name, ok: !!okFlag, detail 
     }
     note('每张表格都有标题', allCaps.length === 15 && missingCaps.length === 0, '缺标题: ' + JSON.stringify(missingCaps));
     console.log('表格标题: ' + JSON.stringify(allCaps, null, 1));
+
+    // ---- 比赛回放：播放、空格暂停、点赛道条跳过去、分享图 ----
+    {
+      await b.click('#nav button[data-tab="play"]');
+      await b.sleep(600);
+      const pl0 = await b.eval(`(function () {
+        var s = TRApp.state.play, sn = document.getElementById('cPlayStrip');
+        return { frac: s.frac, cells: document.querySelectorAll('#playNow .pn').length, playing: s.playing, dur: s.dur,
+          t: document.getElementById('pnT').innerText, d: document.getElementById('pnD').innerText,
+          strip: !!sn._strip, name: TRApp.combos.play.text(), share: document.getElementById('btnShare').style.display !== 'none' };
+      })()`);
+      note('回放：打开就停在起点，右边七格读数都在，顶部有「生成分享图」',
+        pl0.frac === 0 && pl0.cells === 7 && !pl0.playing && /^0:00:00$/.test(pl0.t) && /^0\.00/.test(pl0.d) && pl0.strip && pl0.name.length > 1 && pl0.share,
+        JSON.stringify(pl0));
+      await b.click('#btnPlay');
+      await b.sleep(1200);
+      const pl1 = await b.eval(`(function () { var s = TRApp.state.play; return { frac: s.frac, playing: s.playing, label: document.getElementById('btnPlay').innerText, t: document.getElementById('pnT').innerText, d: document.getElementById('pnD').innerText }; })()`);
+      note('回放：点播放，进度自己往前走，按钮变成暂停，读数跟着变',
+        pl1.frac > 0.005 && pl1.frac < 0.9 && pl1.playing && pl1.label === '暂停' && pl1.t !== pl0.t && pl1.d !== pl0.d, JSON.stringify(pl1));
+      const sp = await b.eval(`(function () {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true }));
+        return { playing: TRApp.state.play.playing, label: document.getElementById('btnPlay').innerText };
+      })()`);
+      note('回放：空格键暂停，按钮变回播放', !sp.playing && sp.label === '播放', JSON.stringify(sp));
+      const sk = await b.eval(`(function () { var c = document.getElementById('cPlayStrip'); c.scrollIntoView({ block: 'center' }); var L = c._strip, r = c.getBoundingClientRect();
+        return { x: r.left + L.x0 + (L.x1 - L.x0) * 0.8, y: r.top + r.height / 2 }; })()`);
+      await b.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: sk.x, y: sk.y, button: 'left', clickCount: 1 });
+      await b.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: sk.x, y: sk.y, button: 'left', clickCount: 1 });
+      await b.sleep(250);
+      const sk2 = await b.eval(`(function () { var s = TRApp.state.play, e = TRApp.state.tracks.filter(function (x) { return String(x.id) === String(s.id); })[0];
+        return { frac: s.frac, d: parseFloat(document.getElementById('pnD').innerText), dist: e.tr.stats.dist / 1000, t: document.getElementById('pnT').innerText }; })()`);
+      note('回放：点赛道条 80% 的位置，读数跳到那一段（' + sk2.d.toFixed(2) + ' / ' + sk2.dist.toFixed(2) + ' km，用时 ' + sk2.t + '）',
+        Math.abs(sk2.d / sk2.dist - 0.8) < 0.03 && sk2.frac > 0.5 && sk2.frac < 1, JSON.stringify(sk2));
+      const cd = await b.eval(`(function () { var c = TRApp.cardCanvas(); if (!c) return null;
+        var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, n = 0;
+        for (var k = 0; k < d.length; k += 4 * 997) if (d[k] < 250 || d[k + 1] < 250 || d[k + 2] < 250) n++;
+        return { w: c.width, h: c.height, n: n }; })()`);
+      note('分享图：1080×1350 的卡片，上面画了路线、赛道条和数字', !!cd && cd.w === 1080 && cd.h === 1350 && cd.n > 100, JSON.stringify(cd));
+
+      // ---- 3D 视角：默认就是 3D，能拖动转 ----
+      const v0 = await b.eval(`(function () {
+        var p = TRApp.state.play, c = document.getElementById('cPlayRoute'), cam = p.v3 ? p.v3.camera() : null;
+        var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, n = 0;
+        for (var k = 0; k < d.length; k += 4 * 97) if (d[k] < 250 || d[k + 1] < 250 || d[k + 2] < 250) n++;
+        return { view: p.view, hasV3: !!p.v3, cam: cam, ink: n, exag: p.exag, exagShown: document.getElementById('lblExag').style.display !== 'none' };
+      })()`);
+      note('3D：默认就是 3D 视角，画面画出来了，海拔夸张和「回正」按钮都在',
+        v0.view === '3d' && v0.hasV3 && v0.cam && v0.cam.pitch > 0.5 && v0.ink > 200 && v0.exagShown, JSON.stringify([v0.view, v0.cam && v0.cam.pitch.toFixed(2), v0.ink]));
+      const cbox = await b.eval(`(function () { var r = document.getElementById('cPlayRoute').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+      await b.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: cbox.x, y: cbox.y, button: 'left', clickCount: 1 });
+      await b.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: cbox.x + 120, y: cbox.y - 40, button: 'left' });
+      await b.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: cbox.x + 120, y: cbox.y - 40, button: 'left', clickCount: 1 });
+      await b.sleep(250);
+      const v1 = await b.eval(`(function () { var p = TRApp.state.play; return p.v3 ? p.v3.camera() : null; })()`);
+      note('3D：横向拖动转视角、上下拖动改俯角（和 3D 地图同一套）',
+        !!v1 && Math.abs(v1.az - v0.cam.az) > 0.3 && v1.pitch < v0.cam.pitch - 0.1, JSON.stringify([v0.cam.az.toFixed(2) + '->' + (v1 && v1.az.toFixed(2)), v0.cam.pitch.toFixed(2) + '->' + (v1 && v1.pitch.toFixed(2))]));
+      await b.click('#btnViewReset');
+      await b.sleep(200);
+      const v2 = await b.eval(`(function () { var p = TRApp.state.play; return { cam: p.v3 ? p.v3.camera() : null }; })()`);
+      note('3D：点「回正」回到默认角度', !!v2.cam && Math.abs(v2.cam.az - (-0.4)) < 1e-6 && Math.abs(v2.cam.pitch - 0.72) < 1e-6, JSON.stringify(v2.cam));
+      await b.eval(`(function () { var s = document.getElementById('selView'); s.value = '2d'; s.onchange(); return 1; })()`);
+      await b.sleep(300);
+      const v3 = await b.eval(`(function () {
+        var p = TRApp.state.play, c = document.getElementById('cPlayRoute');
+        var d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, n = 0;
+        for (var k = 0; k < d.length; k += 4 * 97) if (d[k] < 250 || d[k + 1] < 250 || d[k + 2] < 250) n++;
+        return { view: p.view, hasV3: !!p.v3, ink: n, exagShown: document.getElementById('lblExag').style.display !== 'none' };
+      })()`);
+      note('切到俯视：3D 收起来，平面形状照样画出来，海拔夸张跟着藏起来',
+        v3.view === '2d' && !v3.hasV3 && v3.ink > 50 && !v3.exagShown, JSON.stringify(v3));
+      await b.eval(`(function () { var s = document.getElementById('selView'); s.value = '3d'; s.onchange(); return 1; })()`);
+      await b.sleep(300);
+      await b.shot(path.join(outDir, '1_play.png'), { full: true });
+    }
     // ---- 心率、步频、步幅：文件里有就进表格和图 ----
     const runCols = await b.eval(`(function () {
       function head(id) { return [].map.call(document.getElementById(id).rows[0].cells, function (c) { return c.innerText; }); }
@@ -493,6 +567,70 @@ function note(name, okFlag, detail) { results.push({ name, ok: !!okFlag, detail 
     await b.eval(`(function () { var s = document.getElementById('selSrc'); s.value = 'none'; s.onchange(); var c = document.getElementById('selColor'); c.value = 'track'; c.onchange(); })()`);
     await wait3d('无底图（不联网）', false);
     await b.shot(path.join(outDir, '9_3d_offline.png'));
+
+    // ---- 第一人称回放：贴着路线往前看，拖动看四周，滚轮升降视点 ----
+    {
+      const before = await b.eval(`TRApp.state.map.obj.stats().innerKm`);
+      await b.click('#btnFp');
+      await b.sleep(1200);
+      const f0 = await b.eval(`(function () {
+        var m = TRApp.state.map, p = TRApp.state.play;
+        return { fp: m.fp, fpId: m.fpId, playId: p.id, playing: p.playing, frac: p.frac, info: m.obj.followInfo(),
+                 strip: document.getElementById('mapStripBox').style.display !== 'none',
+                 track: TRApp.combos.fp.text(), eye: document.getElementById('eyeVal').innerText,
+                 label: document.getElementById('btnFp').innerText };
+      })()`);
+      note('第一人称：点一下就贴到路线上，停在起点不自动播，下面出现赛道条',
+        f0.fp && !f0.playing && f0.frac === 0 && !!f0.info && f0.strip && f0.label === '退出第一人称', JSON.stringify([f0.fp, f0.playing, f0.frac.toFixed(3), !!f0.info, f0.strip, f0.label]));
+      await b.click('#btnFpPlay');
+      note('第一人称只挑一条轨迹：地图只画选中的那条，地形也只框这一条',
+        f0.fpId === f0.playId && typeof f0.track === 'string' && f0.track.length > 1 && JSON.stringify(f0.track) === JSON.stringify(await b.eval(`TRApp.state.tracks.filter(function (e) { return String(e.id) === String(TRApp.state.map.fpId); })[0].name`)),
+        '地形范围 ' + JSON.stringify(before) + ' -> ' + JSON.stringify(await b.eval(`TRApp.state.map.obj.stats().innerKm`)) + '，回放 ' + f0.track);
+      await b.sleep(800);
+      const f1 = await b.eval(`TRApp.state.play.frac`);
+      note('第一人称：按播放才走，进度自己在前进', f1 > f0.frac + 0.004, f0.frac.toFixed(3) + ' -> ' + f1.toFixed(3));
+      const fb = await b.eval(`(function () { var r = document.getElementById('mapBox').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+      await b.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: fb.x, y: fb.y, button: 'left', clickCount: 1 });
+      await b.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: fb.x + 150, y: fb.y + 40, button: 'left', buttons: 1 });
+      await b.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: fb.x + 150, y: fb.y + 40, button: 'left', clickCount: 1 });
+      await b.sleep(250);
+      const f2 = await b.eval(`TRApp.state.map.obj.followInfo()`);
+      note('第一人称：拖动看四周（左右转头、上下抬头低头）',
+        Math.abs(f2.headYaw - f0.info.headYaw) > 0.3 && f2.headPitch > f0.info.headPitch + 0.05,
+        JSON.stringify([f2.headYaw.toFixed(2), f2.headPitch.toFixed(2)]));
+      note('第一人称：镜头始终在地面之上，不会钻进山里',
+        f2.ele + f2.eyeH >= f2.ground - 0.5, '海拔 ' + f2.ele.toFixed(0) + ' + 视点 ' + f2.eyeH.toFixed(0) + ' m，地形 ' + f2.ground.toFixed(0) + ' m');
+      // 视点高度的操纵轴
+      await b.eval(`(function () { var r = document.getElementById('rngEye'); r.value = '80'; r.oninput(); return 1; })()`);
+      await b.sleep(300);
+      const f3a = await b.eval(`TRApp.state.map.obj.followInfo()`);
+      note('视点高度有一条滑杆，推上去可以当无人机看整座山', f3a.eyeH > f2.eyeH * 3 && f3a.eyeH < 400,
+        f2.eyeH.toFixed(0) + ' -> ' + f3a.eyeH.toFixed(0) + ' m');
+      await b.eval(`(function () { var r = document.getElementById('rngEye'); r.value = '0'; r.oninput(); return 1; })()`);
+      await b.sleep(200);
+      await b.send('Input.dispatchMouseEvent', { type: 'mouseWheel', x: fb.x, y: fb.y, deltaX: 0, deltaY: 400 });
+      await b.sleep(300);
+      const f3 = await b.eval(`TRApp.state.map.obj.followInfo()`);
+      note('第一人称：滚轮也能调视点高度', f3.eyeH > 2.4, '滑杆归零后滚轮 -> ' + f3.eyeH.toFixed(1) + ' m');
+      // 拖动没有后效：松手以后画面立刻停住，不会再自己滑
+      const before0 = await b.eval(`TRApp.state.map.obj.followInfo().headYaw`);
+      await b.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: fb.x, y: fb.y, button: 'left', clickCount: 1 });
+      await b.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: fb.x + 120, y: fb.y, button: 'left', buttons: 1 });
+      await b.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: fb.x + 240, y: fb.y, button: 'left', buttons: 1 });
+      await b.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: fb.x + 420, y: fb.y + 60, button: 'left', buttons: 1 });
+      await b.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: fb.x + 420, y: fb.y + 60, button: 'left', clickCount: 1 });
+      const g0 = await b.eval(`TRApp.state.map.obj.followInfo().headYaw`);
+      await b.sleep(500);
+      const g1 = await b.eval(`TRApp.state.map.obj.followInfo().headYaw`);
+      note('拖动立刻生效，松手以后镜头就停住，没有惯性',
+        Math.abs(g0 - before0) > 0.3 && Math.abs(g1 - g0) < 0.02,
+        '拖完转了 ' + ((g0 - before0) * 180 / Math.PI).toFixed(1) + '°，松手 0.5 秒后又动 ' + ((g1 - g0) * 180 / Math.PI).toFixed(2) + '°');
+      await b.shot(path.join(outDir, '10_3d_first_person.png'));
+      await b.click('#btnFp');
+      await b.sleep(400);
+      const f4 = await b.eval(`(function () { var m = TRApp.state.map; return { fp: m.fp, fpId: m.fpId, playing: TRApp.state.play.playing, info: m.obj.followInfo(), strip: document.getElementById('mapStripBox').style.display !== 'none' }; })()`);
+      note('退出第一人称：回到自由视角，播放停下，赛道条收起来', !f4.fp && !f4.fpId && !f4.playing && f4.info === null && !f4.strip, JSON.stringify(f4));
+    }
     await b.click('#btnMapOff');
     note('关闭地图后回到提示文字', await b.eval(`document.getElementById('mapBox').className === 'mapbox off' && TRApp.state.map.obj === null`));
 

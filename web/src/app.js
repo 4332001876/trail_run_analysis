@@ -5,7 +5,7 @@
   var PALETTE = ['#2ca02c', '#9467bd', '#ff7f0e', '#1f77b4', '#d62728', '#8c564b', '#e377c2', '#17becf', '#bcbd22', '#7f7f7f'];
   var SEG_COLORS = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#09969b'];
   var TABS = [
-    ['help', '使用教程'], ['overview', '概览'], ['splits', '每公里分段'], ['profile', '海拔与速度'], ['grade', '坡度表现'], ['terrain', '上下坡'],
+    ['help', '使用教程'], ['overview', '概览'], ['play', '比赛回放'], ['splits', '每公里分段'], ['profile', '海拔与速度'], ['grade', '坡度表现'], ['terrain', '上下坡'],
     ['gap', '坡度修正配速'], ['compare', '两场对比'], ['stops', '停留'], ['itra', 'ITRA 估分'], ['map', '地图']
   ];
 
@@ -13,7 +13,10 @@
     tracks: [], seq: 0, tab: 'help', dirty: {},
     matches: {}, cmpA: null, cmpB: null, cmpAuto: true,
     itra: { curve: TR.ITRA_DEFAULT.slice(), mode: 'raw', pending: false, calId: null, calScore: null, calCat: null, calEkm: null },
-    map: { mode: null, obj: null, src: 'amap-sat', color: 'track', stops: true, km: true, region: 'all', exag: 1.5, quality: 'std', url: '', gcj: false }
+    // 回放：id 是选中的轨迹；frac 是全程进度 0~1；dur 是整场播完要多少秒
+    play: { id: null, frac: 0, speed: 0.2, loop: false, playing: false, raf: 0, last: 0, entry: null, forId: null, binsKey: '', strip: null, shape: null, gain: null,
+      view: '3d', exag: 2.5, v3: null, v3Key: '', eyeH: 20 },
+    map: { mode: null, obj: null, src: 'amap-sat', color: 'track', stops: true, km: true, region: 'all', exag: 1.5, quality: 'std', url: '', gcj: false, fp: false }
   };
 
   function $(id) { return document.getElementById(id); }
@@ -279,6 +282,7 @@
 
   function showTab(id) {
     state.tab = id;
+    if (state.play.playing && id !== 'play' && !(id === 'map' && state.map.fp)) setPlaying(false);
     // 没有轨迹时，除了使用教程，其他标签都只显示一句「还没有载入轨迹」
     var i, btns = $('nav').getElementsByTagName('button'), show = state.tracks.length > 0 || id === 'help';
     for (i = 0; i < btns.length; i++) btns[i].className = btns[i].getAttribute('data-tab') === id ? 'on' : '';
@@ -292,6 +296,7 @@
   function refresh(keepTable) {
     var has = state.tracks.length > 0, i;
     $('trackBox').style.display = has ? '' : 'none';
+    $('btnShare').style.display = has ? '' : 'none';
     if (!keepTable) renderTrackTable();
     state.costKey = null;
     for (i = 0; i < TABS.length; i++) state.dirty[TABS[i][0]] = true;
@@ -1095,6 +1100,199 @@
     };
   }
 
+  // ======================= 比赛回放 =======================
+  var raf = window.requestAnimationFrame ? function (f) { return window.requestAnimationFrame(f); }
+    : function (f) { return setTimeout(f, 16); };
+  var caf = window.cancelAnimationFrame ? function (h) { window.cancelAnimationFrame(h); } : function (h) { clearTimeout(h); };
+
+  /** 回放看哪一场：下拉栏选的那条；没选或已经被去掉，就取第一条带时间的 */
+  function playEntry() {
+    var p = state.play, e = p.id !== null ? byId(p.id) : null;
+    if (e && !e.visible) e = null;
+    if (!e) { var t = timed(); e = t.length ? t[0] : null; }
+    if (e) p.id = e.id;
+    return e;
+  }
+
+  /** 只有换了轨迹才需要重算的东西：抽稀后的路线、逐点的累计爬升、赛道条 */
+  function playPrep(e) {
+    var p = state.play, tr = e.tr;
+    if (p.forId !== e.id) {
+      p.forId = e.id; p.shape = TR.routeShape(tr, 900); p.gain = TR.gainPrefix(tr); p.frac = 0;
+    }
+    var key = e.id + '|' + (state.costKey || '') + '|' + tr.n;
+    if (p.binsKey !== key) { p.binsKey = key; p.strip = TR.fingerStrip(tr, costCurve(), 260); }
+  }
+
+  var PLAY_CELLS = [['pnD', '距离'], ['pnP', '配速'], ['pnE', '海拔'], ['pnG', '坡度'], ['pnH', '心率'], ['pnR', '已爬升']];
+
+  /** 回放的大号用时：固定写成 时:分:秒，宽度不变，数字不会左右跳 */
+  function fmtClock(sec) {
+    var s = Math.max(0, Math.round(sec || 0)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+    return h + ':' + pad2(m) + ':' + pad2(s % 60);
+  }
+
+  function buildNow() {
+    var h = '<div class="pn main"><span class="pn-k">用时</span><span class="pn-v" id="pnT">--</span></div>', i;
+    for (i = 0; i < PLAY_CELLS.length; i++) {
+      h += '<div class="pn"><span class="pn-k">' + PLAY_CELLS[i][1] + '</span><span class="pn-v" id="' + PLAY_CELLS[i][0] + '">--</span></div>';
+    }
+    $('playNow').innerHTML = h;
+  }
+
+  /** 左边的路线视图：3D（可以拖动）或俯视的平面形状。两边用同一个进度 */
+  function drawRouteView(e, dfrac) {
+    var p = state.play;
+    if (p.view === '2d') {
+      if (p.v3) { p.v3.destroy(); p.v3 = null; p.v3Key = ''; }
+      $('cPlayRoute').style.cursor = 'default';
+      TRShow.route($('cPlayRoute'), { shape: p.shape, progress: dfrac, color: e.color, height: 300 });
+      return;
+    }
+    if (!p.v3) p.v3 = TRShow3D($('cPlayRoute'), { height: 300, exag: p.exag });
+    var key = e.id + '|' + p.exag + '|' + (p.binsKey || '');
+    if (p.v3Key !== key) {
+      p.v3Key = key;
+      p.v3.setExag(p.exag);
+      p.v3.setData(TR.localKm(e.tr, 1400), p.strip ? p.strip.bins : [], RAMPS.slowfast);
+    }
+    p.v3.setProgress(dfrac);
+  }
+
+  /** 第一人称：眼贴着路线往前看，地图跟着回放走。
+   *  路线本身先按里程做过滑动平均，手表录的几米横向抖动不会让镜头左右乱晃；
+   *  朝向对齐前方 1 公里这一段的大方向，不去跟每一个小弯；角度再按真实时间低通一次。 */
+  function drawFollow(at, dfrac) {
+    var m = state.map, p = state.play, e = p.entry;
+    if (!e || !m.obj || m.mode !== '3d' || !m.obj.setFollow) return;
+    var tr = e.tr;
+    if (!p.fpPath || p.fpPathId !== e.id) { p.fpPath = TR.smoothTrack(tr, 1400, 20); p.fpPathId = e.id; p.fpCam = null; }
+    var path = p.fpPath, total = tr.stats.dist || 1;
+    var frac = Math.max(0, Math.min(1, at.d / total));
+
+    // 位置和朝向都按真实时间低通（和设备帧率无关），平滑的细节在 TR.followStep 里
+    var now = (window.performance && window.performance.now) ? window.performance.now() : Date.now();
+    var dt = p.fpLast ? Math.min(0.12, Math.max(0, (now - p.fpLast) / 1000)) : 0.016;
+    p.fpLast = now;
+    if (!p.fpCam) p.fpCam = {};
+    var cam = TR.followStep(p.fpCam, path, frac, total, dt);
+
+    var kx = 111.32 * Math.cos(tr.lat[0] * Math.PI / 180), ky = 111.32;
+    var lon = tr.lon[0] + cam.eye.x / kx, lat = tr.lat[0] + cam.eye.y / ky;
+    var headLon = lon + Math.cos(cam.ang) * 300 / (111320 * Math.max(0.2, Math.cos(tr.lat[0] * Math.PI / 180)));
+    var headLat = lat + Math.sin(cam.ang) * 300 / 110540;
+    m.obj.setFollow({ lon: lon, lat: lat, ele: cam.ele,
+      headLon: headLon, headLat: headLat, headEle: cam.aheadEle });
+    var fi = m.obj.followInfo ? m.obj.followInfo() : null;
+    if (fi) { p.eyeH = fi.eyeH; showEye(fi.eyeH); }
+    if (p.strip) TRShow.strip($('cMapStrip'), { bins: p.strip.bins, total: p.strip.total, palette: RAMPS.slowfast, cursor: dfrac, height: 92, key: 'm|' + p.binsKey });
+  }
+
+  /** 把光标处的读数写进右边那几格 */
+  function drawPlay() {
+    var p = state.play, e = p.entry;
+    if (!e) return;
+    var tr = e.tr, at = TR.replayAt(tr, p.frac);
+    if (!at) return;
+    var total = tr.stats.dist, dfrac = total > 0 ? at.d / total : 0;
+    if (state.map.fp) drawFollow(at, dfrac);
+    if (state.tab !== 'play') return;
+    drawRouteView(e, dfrac);
+    TRShow.strip($('cPlayStrip'), { bins: p.strip.bins, total: p.strip.total, palette: RAMPS.slowfast, cursor: dfrac, height: 140, key: p.binsKey });
+    var gi = Math.min(tr.n - 1, at.i + 1), g = p.gain[at.i] + (p.gain[gi] - p.gain[at.i]) * at.u;
+    $('pnT').innerHTML = at.t === null ? '--' : fmtClock(at.t);
+    $('pnD').innerHTML = (at.d / 1000).toFixed(2) + '<small>km</small>';
+    $('pnP').innerHTML = at.spd > 0.6 ? TR.fmtPace(3600 / at.spd) + '<small>/km</small>' : '<small>停留中</small>';
+    $('pnE').innerHTML = tr.hasEle ? at.ele.toFixed(0) + '<small>m</small>' : '--';
+    $('pnG').innerHTML = tr.hasEle ? signed(at.grd, 0) + '<small>%</small>' : '--';
+    $('pnH').innerHTML = at.hr ? at.hr + '<small>bpm</small>' : '--';
+    $('pnR').innerHTML = tr.hasEle ? '+' + Math.round(g) + '<small>m</small>' : '--';
+  }
+
+  function setPlaying(v) {
+    var p = state.play;
+    if (v && p.frac >= 1) p.frac = 0;
+    p.playing = v; p.last = 0;
+    $('btnPlay').innerHTML = v ? '暂停' : '播放';
+    $('btnPlay').className = 'btn play-btn ' + (v ? 'on' : 'primary');
+    $('btnFpPlay').innerHTML = v ? '暂停' : '播放';
+    $('btnFpPlay').className = 'btn ' + (v ? 'on' : 'primary');
+    if (v) p.raf = raf(tick); else if (p.raf) { caf(p.raf); p.raf = 0; }
+  }
+
+  function tick(ts) {
+    var p = state.play;
+    if (!p.playing) return;
+    if (!p.last) p.last = ts;
+    var dt = (ts - p.last) / 1000;
+    p.last = ts;
+    if (dt > 0.25) dt = 0.25;                 // 切走再切回来时不要一下跳很远
+    // 速度按「每秒前进多少公里」算：最快 1 公里/秒
+    var km = p.entry ? Math.max(0.05, p.entry.tr.stats.dist / 1000) : 1;
+    p.frac += dt * Math.min(1, p.speed) / km;
+    if (p.frac >= 1) {
+      if (p.loop) p.frac -= 1;
+      else { p.frac = 1; drawPlay(); setPlaying(false); return; }
+    }
+    drawPlay();
+    if (p.playing) p.raf = raf(tick);
+  }
+
+  renderers.play = function () {
+    var e = playEntry(), p = state.play;
+    if (combos.play) combos.play.set(trackItems(timed()), e ? e.id : null);
+    if (!e) {
+      if (p.v3) { p.v3.destroy(); p.v3 = null; p.v3Key = ''; }
+      $('playNow').innerHTML = '<div class="empty">没有带时间的轨迹。回放需要文件里记了时间，事先规划的路线放不了。</div>';
+      $('btnPlay').disabled = true;
+      return;
+    }
+    $('btnPlay').disabled = false;
+    p.entry = e;
+    playPrep(e);
+    buildNow();
+    drawPlay();
+  };
+
+  /** 分享图：这一场画成一张 1080×1350 的 PNG */
+  function cardStats(e) {
+    var st = e.tr.stats, km = st.dist / 1000, out = [];
+    if (st.elapsed === null) return [{ k: '距离', v: km.toFixed(2), u: 'km' }];
+    out.push({ k: '用时', v: TR.fmtHms(st.elapsed), u: '' });
+    out.push({ k: '平均配速', v: TR.fmtPace(st.elapsed / km), u: '/km' });
+    out.push({ k: '等效平路速度', v: ((km + st.gain / 100) / (st.elapsed / 3600)).toFixed(1), u: 'km/h' });
+    out.push({ k: '平均心率', v: st.hrAvg ? String(Math.round(st.hrAvg)) : '--', u: 'bpm' });
+    return out;
+  }
+
+  /** 分享图用的一张画布：这一场的形状、赛道条和四个数字 */
+  function buildCard(e) {
+    var st = e.tr.stats, sub = [];
+    if (e.tr.startMs) sub.push(dateStr(e.tr.startMs));
+    sub.push((st.dist / 1000).toFixed(2) + ' km');
+    if (st.gain !== null) sub.push('+' + Math.round(st.gain) + ' m 爬升');
+    if (st.eleMax !== null) sub.push('最高 ' + Math.round(st.eleMax) + ' m');
+    return TRShow.card({
+      name: e.name, subtitle: sub.join('     ·     '), color: e.color,
+      shape: state.play.shape, bins: state.play.strip.bins, total: state.play.strip.total,
+      palette: RAMPS.slowfast, stats: cardStats(e),
+      foot: '越野跑轨迹分析 · 单文件网页版', foot2: '文件只在这台设备的浏览器里处理'
+    });
+  }
+
+  function shareCard() {
+    var e = playEntry();
+    if (!e) return;
+    playPrep(e);
+    var cv = buildCard(e);
+    TRShow.copy(cv, function (ok) {
+      if (ok) { setStatus('分享图已复制到剪贴板，可以直接粘到聊天窗口'); return; }
+      TRShow.save(cv, (e.name || '轨迹') + '.png', function (ok2) {
+        setStatus(ok2 ? '分享图已存成 PNG，在浏览器的下载文件夹里' : '这个浏览器不让存图片，换一个试试');
+      });
+    });
+  }
+
   // ======================= 地图 =======================
   function ramp(stops, n) {
     var out = [], i, k;
@@ -1182,11 +1380,16 @@
   }
 
   function mapEntries() {
-    var list = vis(), m = state.map, out = [], i;
+    var m = state.map, list = vis(), out = [], i, forced = null;
+    // 回放时只画选中的那一条，地形也只框这一条，高程和贴图能更清楚
+    if (m.fp && m.fpId) {
+      var fe = byId(m.fpId);
+      if (fe && fe.visible) { list = [fe]; forced = fe; }
+    }
     var info = colorize(list, m.color);
     if (!info) { info = colorize(list, 'track'); info.html = '这种着色需要带时间（或心率）的数据，当前轨迹不够，已改回按轨迹着色。'; }
     $('mapLegend').innerHTML = info.html;
-    var one = m.region !== 'all' && byId(m.region) && byId(m.region).visible ? byId(m.region) : null;
+    var one = forced || (m.region !== 'all' && byId(m.region) && byId(m.region).visible ? byId(m.region) : null);
     for (i = 0; i < list.length; i++) {
       out.push({ id: list[i].id, name: list[i].name, color: list[i].color, tr: list[i].tr, cidx: list[i].cidx, palette: list[i].palette,
         stops: list[i].tr.stopList, wpts: list[i].wpts || [], inRegion: one ? list[i] === one : true });
@@ -1216,6 +1419,7 @@
   function closeMap() {
     var m = state.map;
     if (m.obj) m.obj.destroy();
+    if (m.fp) { m.fp = false; setPlaying(false); }
     m.obj = null; m.mode = null;
     var box = $('mapBox');
     box.className = 'mapbox off';
@@ -1232,6 +1436,60 @@
     combos.region.set(items, state.map.region);
   }
 
+  /** 视点高度的滑杆：0~100 走对数，低处好调、高处也能拉到几百米 */
+  function eyeToSlider(h) { return Math.max(0, Math.min(100, Math.round(100 * Math.log(h / 1.7) / Math.log(400 / 1.7)))); }
+  function sliderToEye(v) { return 1.7 * Math.pow(400 / 1.7, v / 100); }
+  var eyeShown = -1;
+  function showEye(h) {
+    var m = Math.round(h * 10) / 10;
+    if (Math.abs(m - eyeShown) < 0.1) return;
+    eyeShown = m;
+    $('rngEye').value = String(eyeToSlider(m));
+    $('eyeVal').innerHTML = (m >= 10 ? Math.round(m) : m.toFixed(1)) + ' m';
+  }
+
+  /** 第一人称的几个控件：只在 3D 地图打开、并且进入第一人称时出现 */
+  function syncFpUi() {
+    var m = state.map, on = !!m.fp, p = state.play;
+    $('btnFp').className = 'btn' + (on ? ' on' : '');
+    $('btnFp').innerHTML = on ? '退出第一人称' : '第一人称回放';
+    $('btnFpPlay').style.display = on ? '' : 'none';
+    $('lblFpDur').style.display = on ? '' : 'none';
+    $('mapStripBox').style.display = on ? '' : 'none';
+    $('fpTip').style.display = on ? '' : 'none';
+    $('lblFpTrack').style.display = on ? '' : 'none';
+    $('lblFpEye').style.display = on ? '' : 'none';
+    $('tip3d').style.display = on ? 'none' : '';
+    if (on) { combos.fp.set(trackItems(timed()), state.play.id); eyeShown = -1; showEye(state.play.eyeH || 1.7); }
+    $('btnFpPlay').innerHTML = p.playing ? '暂停' : '播放';
+    $('btnFpPlay').className = 'btn ' + (p.playing ? 'on' : 'primary');
+    $('selSpeed2').value = String(p.speed);
+  }
+
+  function toggleFp() {
+    var m = state.map, e = playEntry();
+    if (!e) { setStatus('第一人称回放需要带时间的轨迹'); return; }
+    if (!m.obj || m.mode !== '3d') openMap('3d');
+    m.fp = !m.fp;
+    if (m.fp) {
+      state.play.entry = e;
+      state.play.id = e.id;
+      state.play.fpLast = 0; state.play.fpPath = null; state.play.fpCam = null;
+      m.fpId = e.id;
+      playPrep(e);
+      if (m.obj && m.obj.setEyeH) m.obj.setEyeH(state.play.eyeH);
+      syncMap();
+      setPlaying(false);          // 点进来先停在起点，想播再按播放
+    } else {
+      setPlaying(false);
+      if (m.obj && m.obj.setFollow) m.obj.setFollow(null);
+      m.fpId = null;
+      syncMap();
+    }
+    syncFpUi();
+    drawPlay();
+  }
+
   function openMap(mode) {
     var list = vis(), m = state.map;
     if (!list.length) return;
@@ -1241,6 +1499,8 @@
     m.mode = mode;
     $('btnMapOff').style.display = ''; $('bar3d').style.display = mode === '3d' ? '' : 'none'; $('lblKm').style.display = mode === '3d' ? 'none' : '';
     $('btn2d').className = 'btn ' + (mode === '2d' ? 'on' : 'primary'); $('btn3d').className = 'btn ' + (mode === '3d' ? 'on' : 'primary');
+    $('btnFp').style.display = mode === '3d' ? '' : 'none';
+    if (mode !== '3d' && m.fp) { m.fp = false; setPlaying(false); }
     if (mode === '3d') {
       // 轨迹分散在相距很远的几处时，地形范围太大就看不清，默认只取第一条
       if (m.region === 'all' && list.length > 1) {
@@ -1273,6 +1533,7 @@
     if (m.mode === '3d') fillRegion();
     var en = mapEntries();
     if (m.mode === '3d') m.obj.setEntries(en, en.key); else m.obj.setEntries(en);
+    if (m.fp) drawPlay();
   }
 
   renderers.map = function () { if (!state.map.obj) closeMap(); };
@@ -1291,6 +1552,24 @@
     $('btn2d').onclick = function () { openMap('2d'); };
     $('btn3d').onclick = function () { openMap('3d'); };
     $('btnMapOff').onclick = closeMap;
+    $('btnFp').onclick = toggleFp;
+    combos.fp = Combo($('selFp'), function (id) {
+      var e = byId(id);
+      if (!e) return;
+      state.play.id = id; state.play.forId = null; state.play.frac = 0;
+      state.play.entry = e; state.map.fpId = id;
+      playPrep(e);
+      syncMap();
+      drawPlay();
+    });
+    $('rngEye').oninput = function () {
+      var h = sliderToEye(parseFloat(this.value) || 0);
+      state.play.eyeH = h;
+      if (state.map.obj && state.map.obj.setEyeH) state.map.obj.setEyeH(h);
+      eyeShown = -1; showEye(h);
+    };
+    $('btnFpPlay').onclick = function () { setPlaying(!state.play.playing); };
+    $('selSpeed2').onchange = function () { state.play.speed = parseFloat(this.value) || 0.2; $('selSpeed').value = this.value; };
     $('selSrc').onchange = function () {
       m.src = this.value;
       try { window.localStorage.setItem('tr.src', m.src); } catch (e) { /* 忽略 */ }
@@ -1310,10 +1589,70 @@
       if (m.obj) m.obj.setOptions(mapOptions());
     };
     $('selQuality').onchange = function () { m.quality = this.value; if (m.obj) m.obj.setOptions(mapOptions()); };
+    bindStripSeek($('cMapStrip'));
     closeMap();
+    syncFpUi();
   }
 
   // ======================= 启动 =======================
+  /** 点或拖动赛道条跳到任意位置。回放面板和地图下的那条用的是同一套 */
+  function bindStripSeek(canvas) {
+    var dragging = false;
+    function seek(ev) {
+      var L = canvas._strip, e = state.play.entry;
+      if (!L || !L.total || !e) return;
+      var r = canvas.getBoundingClientRect(), f = ((ev.clientX - r.left) - L.x0) / Math.max(1, L.x1 - L.x0);
+      // 横轴是里程，回放按时间走：换算过去，光标才会落在手指底下
+      state.play.frac = TR.timeFrac(e.tr, f < 0 ? 0 : (f > 1 ? 1 : f));
+      drawPlay();
+    }
+    canvas.addEventListener('mousedown', function (ev) {
+      if (ev.button !== 0) return;
+      dragging = true; seek(ev); ev.preventDefault();
+    });
+    window.addEventListener('mousemove', function (ev) { if (dragging) seek(ev); });
+    window.addEventListener('mouseup', function () { dragging = false; });
+    canvas.addEventListener('touchstart', function (ev) {
+      if (ev.touches.length === 1) { seek(ev.touches[0]); ev.preventDefault(); }
+    }, { passive: false });
+    canvas.addEventListener('touchmove', function (ev) {
+      if (ev.touches.length === 1) { seek(ev.touches[0]); ev.preventDefault(); }
+    }, { passive: false });
+  }
+
+  function initPlay() {
+    var p = state.play;
+
+    $('btnPlay').onclick = function () { setPlaying(!p.playing); };
+    $('selSpeed').onchange = function () { p.speed = parseFloat(this.value) || 0.2; $('selSpeed2').value = this.value; };
+    $('chkLoop').onchange = function () { p.loop = this.checked; };
+    $('btnShare').onclick = shareCard;
+    $('selView').onchange = function () {
+      p.view = this.value;
+      $('lblExag').style.display = p.view === '3d' ? '' : 'none';
+      $('btnViewReset').style.display = p.view === '3d' ? '' : 'none';
+      drawPlay();
+    };
+    $('selExag').onchange = function () {
+      p.exag = parseFloat(this.value) || 2.5;
+      if (p.v3) p.v3.setExag(p.exag);
+      p.v3Key = '';
+      drawPlay();
+    };
+    $('btnViewReset').onclick = function () { if (p.v3) p.v3.reset(); };
+    bindStripSeek($('cPlayStrip'));
+
+    // 空格键暂停和继续；在输入框里打字时不拦
+    document.addEventListener('keydown', function (ev) {
+      if (state.tab !== 'play' || !state.tracks.length) return;
+      var tag = ev.target && ev.target.tagName;
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+      if (ev.key === ' ' || ev.key === 'Spacebar' || ev.code === 'Space') {
+        ev.preventDefault(); setPlaying(!p.playing);
+      }
+    });
+  }
+
   function init() {
     var h = '', i, timer = 0;
     for (i = 0; i < TABS.length; i++) h += '<button type="button" data-tab="' + TABS[i][0] + '"><span>' + TABS[i][1] + '</span></button>';
@@ -1351,6 +1690,8 @@
     combos.b = Combo($('selB'), function (id) { state.cmpB = id; renderers.compare(); });
     combos.region = Combo($('selRegion'), function (id) { state.map.region = id; syncMap(); });
     combos.itra = Combo($('selItra'), function () {});
+    combos.play = Combo($('selPlay'), function (id) { state.play.id = id; state.play.forId = null; renderers.play(); });
+    initPlay();
     initInput(); initTrackTable(); initMap(); initItra();
     $('selX').onchange = function () { renderers.profile(); };
     $('selCk').onchange = function () { renderers.compare(); };
@@ -1366,6 +1707,7 @@
     refresh();
   }
 
-  window.TRApp = { state: state, combos: combos, addFiles: addFiles, showTab: showTab, openMap: openMap, closeMap: closeMap };
+  window.TRApp = { state: state, combos: combos, addFiles: addFiles, showTab: showTab, openMap: openMap, closeMap: closeMap,
+    cardCanvas: function () { var e = playEntry(); if (!e) return null; playPrep(e); return buildCard(e); } };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

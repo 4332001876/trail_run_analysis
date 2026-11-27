@@ -610,6 +610,110 @@ console.log('11. 爬坡耐力、上下坡、掉速点、基准场、按坡度拆
   ok(at.bands.every(function (b) { return b.d > 500 && b.mA > 0 && b.mB > 0; }), '这条路线五档坡度都有路程');
   ok(TR.sameRoute(A, B, match, 2).attr.bands.every(function (b, k) { return near(b.d, at.bands[k].d, 400) && near(b.mB - b.mA, at.bands[k].mB - at.bands[k].mA, 240); }), '换一个检查点间距，各档的结果基本不变');
   console.log('  ' + at.bands.map(function (b) { return b.name.split(' ')[0] + ' ' + (b.d / 1000).toFixed(1) + ' km ' + ((b.mB - b.mA) / 60).toFixed(1) + ' 分'; }).join('，') + '；停留差 ' + ((at.stopB - at.stopA) / 60).toFixed(1) + ' 分');
+  // 12. 赛道条和回放
+  console.log('12. 赛道条 + 回放');
+  ref.files.forEach(function (name) {
+    var tr = tracks[name], cost2 = TR.fitCostCurve(fits[name]), fs = TR.fingerStrip(tr, cost2, 200), bins = fs.bins;
+    var k, bad = 0, dd = 0, devs = [], dr = 0;
+    ok(bins.length === 200 && near(fs.total, tr.stats.dist, 1e-9), name + ': 切成 200 格，总里程对得上');
+    for (k = 0; k < bins.length; k++) {
+      var b = bins[k];
+      dd += b.d;
+      if (!near(b.d0, k * fs.total / 200, 1e-9) || !near(b.d1, (k + 1) * fs.total / 200, 1e-9)) bad++;
+      if (b.e0 !== null && b.e1 !== null && (b.e0 > b.e1 + 1e-9 || b.e0 < tr.stats.eleMin - 0.01 || b.e1 > tr.stats.eleMax + 0.01)) bad++;
+      if (b.e0 === null || b.e1 === null) bad++;
+      if (b.stop < 0 || b.stop > 1) bad++;
+      if (b.dev !== null) { devs.push(b.dev); if (Math.abs(b.dev) > 4) bad++; }
+    }
+    ok(bad === 0 && near(dd, tr.stats.dist, 1e-6), name + ': 每格首尾相接、海拔不越界、停留比例在 0~1 之间');
+    devs.sort(function (a, b2) { return a - b2; });
+    ok(devs.length > bins.length / 2 && Math.abs(devs[Math.floor(devs.length / 2)]) < 0.02,
+      name + ': ' + devs.length + ' 格有速度，偏差的中位数应该是 0，实际 ' + devs[Math.floor(devs.length / 2)].toFixed(3));
+
+    var gp = TR.gainPrefix(tr), mono = true;
+    for (k = 0; k < tr.n; k++) { if (k && gp[k] < gp[k - 1] - 1e-9) mono = false; dr = gp[k]; }
+    ok(near(dr, tr.stats.gain, 1e-6) && mono, name + ': 累计爬升 ' + dr.toFixed(0) + ' m 和概览的 ' + tr.stats.gain.toFixed(0) + ' m 一致，而且只增不减');
+
+    var r0 = TR.replayAt(tr, 0), r1 = TR.replayAt(tr, 1), r5 = TR.replayAt(tr, 0.5), prev = -1, us = 0;
+    for (k = 0; k <= 100; k++) {
+      var rr = TR.replayAt(tr, k / 100);
+      if (rr.d < prev - 1e-6) us++;
+      prev = rr.d;
+      if (rr.u < 0 || rr.u > 1 || rr.i < 0 || rr.i > tr.n - 2) us++;
+    }
+    ok(r0 && near(r0.d, 0, 1e-9) && near(r1.d, tr.stats.dist, 1e-6) && r5.d > 0.2 * tr.stats.dist && r5.d < 0.85 * tr.stats.dist && us === 0,
+      name + ': 回放从起点走到终点，里程一路增加');
+    ok(r5.t > 0.2 * tr.stats.elapsed && r5.t < 0.8 * tr.stats.elapsed && r5.ele >= tr.stats.eleMin - 1 && r5.ele <= tr.stats.eleMax + 1,
+      name + ': 回放到一半的时间和海拔都在范围内');
+
+    var sh = TR.routeShape(tr, 900);
+    ok(sh.n <= 901 && sh.fr[0] === 0 && sh.fr[sh.n - 1] === 1 && near(sh.x[0], TR.worldX(tr.lon[0]), 1e-9) && near(sh.y[sh.n - 1], TR.worldY(tr.lat[tr.n - 1]), 1e-9),
+      name + ': 路线抽稀成 ' + sh.n + ' 个点，首尾的坐标和进度都对得上');
+
+    // 3D 用的本地平面：和同一批抽稀点的经纬度距离比，差得太多说明投影公式写错了
+    var lk = TR.localKm(tr, 1400), plen = 0, hv = 0, q2, st2 = Math.max(1, Math.ceil(tr.n / 1400)), prev2 = 0;
+    for (q2 = 1; q2 < lk.n; q2++) plen += Math.sqrt(Math.pow(lk.x[q2] - lk.x[q2 - 1], 2) + Math.pow(lk.y[q2] - lk.y[q2 - 1], 2));
+    for (q2 = st2; q2 < tr.n; q2 += st2) { hv += TR.haversine(tr.lat[prev2], tr.lon[prev2], tr.lat[q2], tr.lon[q2]); prev2 = q2; }
+    if (prev2 !== tr.n - 1) hv += TR.haversine(tr.lat[prev2], tr.lon[prev2], tr.lat[tr.n - 1], tr.lon[tr.n - 1]);
+    hv /= 1000;
+    ok(lk.n <= 1401 && lk.x[0] === 0 && lk.y[0] === 0 && near(lk.z[0], tr.smooth[0], 1e-9) && lk.d[lk.n - 1] === 1,
+      name + ': 本地平面 ' + lk.n + ' 个点，从原点出发，海拔和进度都对得上');
+    ok(close(plen, hv, 0.005),
+      name + ': 平面折线长 ' + plen.toFixed(2) + ' km，同样的点用经纬度算是 ' + hv.toFixed(2) + ' km');
+
+    // 第一人称：路线按里程 ±30 米做滑动平均，点不会跑出这个范围，长度只会变短
+    var sm2 = TR.smoothTrack(tr, 1400, 20), dmax = 0, slen = 0, q3;
+    for (q3 = 0; q3 < sm2.n; q3++) {
+      dmax = Math.max(dmax, Math.abs(sm2.x[q3] - lk.x[q3]), Math.abs(sm2.y[q3] - lk.y[q3]));
+      if (q3) slen += Math.sqrt(Math.pow(sm2.x[q3] - sm2.x[q3 - 1], 2) + Math.pow(sm2.y[q3] - sm2.y[q3 - 1], 2));
+    }
+    ok(sm2.n === lk.n && dmax <= 0.020 + 1e-9 && slen <= plen + 1e-9 && slen > plen * 0.93,
+      name + ': 平滑后的路线每个点最多偏 ' + (dmax * 1000).toFixed(1) + ' m，长度 ' + slen.toFixed(2) + ' / ' + plen.toFixed(2) + ' km');
+
+    // 第一人称按「每秒 0.2 公里」（默认）和最快的 1 公里/秒各走一遍：
+    // 看每帧朝向转多少度、相机自己的前进方向偏多少度（只统计确实在往前走的那几帧）
+    function camRun(speed) {
+      var fr2 = Math.round((tr.stats.dist / 1000) / speed * 60), c2 = null, pa = null, pv = null, pp = null, mA = 0, mxA = 0, steps = [], angs = [];
+      for (var q4 = 0; q4 <= fr2; q4++) {
+        c2 = TR.followStep(c2, sm2, Math.min(1, q4 / fr2), tr.stats.dist, 1 / 60);
+        if (pa !== null) {
+          var dd = c2.ang - pa;
+          while (dd > Math.PI) dd -= 2 * Math.PI;
+          while (dd < -Math.PI) dd += 2 * Math.PI;
+          mA = Math.max(mA, Math.abs(dd) * 180 / Math.PI);
+        }
+        pa = c2.ang;
+        if (pp) {
+          var vx = c2.eye.x - pp.x, vy = c2.eye.y - pp.y, vl = Math.sqrt(vx * vx + vy * vy);
+          steps.push(vl);
+          if (pv) {
+            var ox = pv.vx, oy = pv.vy, ol = pv.vl;
+            if (vl > 1e-9 && ol > 1e-9) {
+              var dot = (vx * ox + vy * oy) / (vl * ol);
+              angs.push({ a: Math.acos(Math.max(-1, Math.min(1, dot))) * 180 / Math.PI, l: vl, o: ol });
+            }
+          }
+          pv = { vx: vx, vy: vy, vl: vl };
+        }
+        pp = { x: c2.eye.x, y: c2.eye.y };
+      }
+      var srt = steps.slice().sort(function (a, b) { return a - b; }), med = srt[Math.floor(srt.length / 2)] || 0, i2;
+      for (i2 = 0; i2 < angs.length; i2++) {
+        if (angs[i2].l > 0.3 * med && angs[i2].o > 0.3 * med) mxA = Math.max(mxA, angs[i2].a);
+      }
+      return { a: mA, m: mxA };
+    }
+    var slow = camRun(0.2), fast = camRun(1);
+    ok(slow.a < 8 && slow.m < 18,
+      name + ': 每秒 0.2 公里时，每帧朝向最多转 ' + slow.a.toFixed(2) + '°、相机前进方向最多偏 ' + slow.m.toFixed(1) + '°');
+    console.log('    最快的 1 公里/秒下：朝向 ' + fast.a.toFixed(2) + '°/帧，前进方向 ' + fast.m.toFixed(1) + '°/帧');
+
+    // 点赛道条：里程进度换算成时间进度，再取回来，应该还是原来的里程
+    var tf = TR.timeFrac(tr, 0.8), back = TR.replayAt(tr, tf);
+    ok(tf > 0 && tf <= 1 && near(back.d, 0.8 * tr.stats.dist, 2e-3), name + ': 点赛道条 80% 的位置，回放停在 ' + (back.d / tr.stats.dist * 100).toFixed(1) + '% 里程');
+    console.log('  ' + lj(name.slice(0, 22), 24) + ' ' + devs.length + ' 格有速度，最快的一格 ' + Math.pow(2, devs[devs.length - 1]).toFixed(2) + ' 倍、最慢的一格 ' + Math.pow(2, devs[0]).toFixed(2) + ' 倍，全程爬升 ' + dr.toFixed(0) + ' m');
+  });
+
 })();
 
 console.log('\n' + (fails ? fails + ' 项不一致' : '全部一致') + '（共 ' + checks + ' 项检查）');
