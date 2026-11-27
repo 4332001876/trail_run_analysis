@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>越野跑轨迹分析</title>
+<style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+<div id="dropMask" class="drop-mask">松开鼠标，载入轨迹文件</div>
+
+<header class="top">
+  <h1>越野跑轨迹分析</h1>
+  <span class="hint">支持 GPX 1.0 / 1.1 和 TCX。文件只在这台设备的浏览器里处理，不会上传</span>
+</header>
+
+<section class="loader">
+  <div class="loader-row">
+    <label class="btn primary" for="inFiles">选择轨迹文件</label>
+    <label class="btn" for="inDir" id="lblDir">选择文件夹</label>
+    <button class="btn" id="btnClear" type="button">清空</button>
+    <span class="loader-tip">也可以把文件或整个文件夹直接拖到页面上，可以一次放多个</span>
+  </div>
+  <input type="file" id="inFiles" class="vh" multiple>
+  <input type="file" id="inDir" class="vh" webkitdirectory multiple>
+  <div id="status" class="status"></div>
+</section>
+
+<section id="trackBox" class="tracks" style="display:none">
+  <div class="scroll"><table id="trackTable" class="tracktable"></table></div>
+  <div class="note">勾选框决定这条轨迹是否参与下面的图表；名称和颜色可以直接改。</div>
+</section>
+
+<nav id="nav" class="nav"></nav>
+
+<main id="panels">
+
+  <section class="panel" id="noData">
+    <div class="empty">
+      <b>还没有载入轨迹</b><br>
+      点上方的「选择轨迹文件」，或者把文件拖到页面上。<br>
+      <button type="button" class="btn" data-go="help">看使用教程</button>
+    </div>
+  </section>
+
+  <section class="panel" id="p-help">
+    <div class="help">
+
+      <section class="hsec hs1">
+      <h2>三步开始</h2>
+      <div class="hbody">
+      <ol class="steps">
+        <li class="step">
+          <div class="step-h"><span class="stepno dot">1</span><h3>导出轨迹文件</h3></div>
+          <svg class="pic" viewBox="0 0 220 96" width="220" height="96" aria-hidden="true" focusable="false">
+            <rect class="g" x="36" y="6" width="28" height="20"/><rect class="g" x="36" y="70" width="28" height="20"/>
+            <rect class="w" x="24" y="22" width="52" height="52" rx="10"/>
+            <polyline class="t" points="34,58 44,44 52,52 66,36"/>
+            <path class="r" d="M96 40h22V30l20 18-20 18V56H96z"/>
+            <path class="w" d="M158 10h30l16 16v60h-46z"/><path d="M188 10v16h16"/>
+            <text x="181" y="64" text-anchor="middle">GPX</text>
+          </svg>
+          <p>在手表的 App 里导出 <b>GPX</b> 或 <b>TCX</b> 文件。</p>
+        </li>
+        <li class="step-arrow" aria-hidden="true"><svg class="pic" viewBox="0 0 44 44" width="44" height="44" focusable="false"><path class="r" d="M4 15h18V5l18 17-18 17V29H4z"/></svg></li>
+        <li class="step">
+          <div class="step-h"><span class="stepno dot">2</span><h3>放进这个页面</h3></div>
+          <svg class="pic" viewBox="0 0 220 96" width="220" height="96" aria-hidden="true" focusable="false">
+            <path class="w" d="M14 14h30l16 16v56H14z"/><path d="M44 14v16h16"/>
+            <text x="37" y="66" text-anchor="middle">GPX</text>
+            <path class="r" d="M78 40h22V30l20 18-20 18V56H78z"/>
+            <rect class="w" x="134" y="10" width="78" height="76" rx="6"/><path d="M134 26h78"/>
+            <rect class="y d" x="145" y="36" width="56" height="40" rx="4"/>
+            <path d="M173 48v16M165 56h16"/>
+          </svg>
+          <p>点「选择轨迹文件」，或者<b>直接拖进来</b>。</p>
+        </li>
+        <li class="step-arrow" aria-hidden="true"><svg class="pic" viewBox="0 0 44 44" width="44" height="44" focusable="false"><path class="r" d="M4 15h18V5l18 17-18 17V29H4z"/></svg></li>
+        <li class="step">
+          <div class="step-h"><span class="stepno dot">3</span><h3>点标签看结果</h3></div>
+          <svg class="pic" viewBox="0 0 220 96" width="220" height="96" aria-hidden="true" focusable="false">
+            <rect class="w" x="38" y="8" width="144" height="80" rx="6"/><path d="M38 40h144"/>
+            <rect class="v" x="48" y="18" width="36" height="14" rx="3"/>
+            <rect class="w" x="90" y="18" width="36" height="14" rx="3"/>
+            <rect class="y" x="132" y="18" width="36" height="14" rx="3"/>
+            <polyline class="t" points="52,78 74,62 96,70 120,58 142,74 168,66"/>
+            <path class="w" d="M150 26v22l5.500-5 4 9.500 4.500-2-4-9.500h7.500z"/>
+          </svg>
+          <p>点上面那一排<b>标签</b>，切换不同的分析。</p>
+        </li>
+      </ol>
+      <div class="callout">
+        <svg class="pic" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true" focusable="false">
+          <path class="w" d="M11 29a7 7 0 0 1 0-14 9.500 9.500 0 0 1 18 1.500 6.300 6.300 0 0 1 0 12.500z"/>
+          <path d="M20 26v-8M16.500 21l3.500-3.500 3.500 3.500"/>
+          <circle class="a" cx="20" cy="20" r="17"/><path class="a" d="M8 8l24 24"/>
+        </svg>
+        <b>文件不会上传</b>只在这台设备的浏览器里计算。关掉页面数据就清空，只留下地图图源和「ITRA 估分」里的六个数字。
+      </div>
+      </div>
+      </section>
+
+      <section class="hsec hs2">
+      <h2>每个标签能看什么 <small>点一下直接打开</small></h2>
+      <div class="hbody">
+      <div class="cards">
+        <button type="button" class="card" data-go="overview"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><rect class="w" x="5" y="8" width="38" height="32"/><rect class="b" x="5" y="8" width="38" height="10"/><path d="M5 29h38M19 18v22"/></svg><span class="card-t">概览</span><span class="card-q">这几场整体差多少？</span></button>
+        <button type="button" class="card" data-go="splits"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><rect class="b" x="7" y="26" width="7" height="16"/><rect class="b" x="17" y="20" width="7" height="22"/><rect class="r" x="27" y="8" width="7" height="34"/><rect class="b" x="37" y="23" width="7" height="19"/><path d="M4 42h42"/></svg><span class="card-t">每公里分段</span><span class="card-q">哪几公里最慢？</span></button>
+        <button type="button" class="card" data-go="profile"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><path class="n" d="M4 42l10-18 7 8 9-22 14 32z"/><path d="M2 42h44"/></svg><span class="card-t">海拔与速度</span><span class="card-q">速度从哪里开始掉的？</span></button>
+        <button type="button" class="card" data-go="grade"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><path class="y" d="M4 42h40V18z"/><path class="a" d="M8 27l22-13M23 10l8 3.500-3.500 8"/></svg><span class="card-t">坡度表现</span><span class="card-q">上坡弱还是下坡弱？</span></button>
+        <button type="button" class="card" data-go="terrain"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><path class="y" d="M4 40L24 9v31z"/><path class="b" d="M24 9l20 31H24z"/><path d="M2 40h44"/></svg><span class="card-t">上下坡</span><span class="card-q">上坡和下坡各花了多少时间？</span></button>
+        <button type="button" class="card" data-go="gap"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><path d="M6 6v36h38"/><polyline class="t" points="11,14 21,15 30,22 41,34"/></svg><span class="card-t">坡度修正配速</span><span class="card-q">后半程是不是掉速了？</span></button>
+        <button type="button" class="card" data-go="compare"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><polyline class="t" points="5,30 16,16 27,22 43,7"/><polyline points="5,42 16,31 27,38 43,26" style="stroke-width:3"/></svg><span class="card-t">两场对比</span><span class="card-q">这次比上次慢在哪一段？</span></button>
+        <button type="button" class="card" data-go="stops"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><circle class="w" cx="24" cy="24" r="19"/><rect class="v" x="16" y="15" width="6" height="18"/><rect class="v" x="26" y="15" width="6" height="18"/></svg><span class="card-t">停留</span><span class="card-q">补给和休息花了多久？</span></button>
+        <button type="button" class="card" data-go="itra"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><path class="y" d="M4 36a20 20 0 0 1 40 0z"/><path d="M24 16v4M10 22l3 3M38 22l-3 3"/><path class="a" d="M24 36l8-11"/><circle class="v" cx="24" cy="36" r="2.500"/></svg><span class="card-t">ITRA 估分</span><span class="card-q">这场大概能拿多少分？</span></button>
+        <button type="button" class="card" data-go="map"><svg class="pic" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true" focusable="false"><path class="r" d="M24 45C15 33 11 27 11 20a13 13 0 0 1 26 0c0 7-4 13-13 25z"/><circle class="w" cx="24" cy="20" r="5"/></svg><span class="card-t">地图</span><span class="card-q">慢的那一段在山上哪里？</span></button>
+      </div>
+      <p class="note">每个标签页的底部都写着这一页的数字是怎么算出来的。</p>
+      </div>
+      </section>
+
+      <section class="hsec hs3">
+      <h2>想做什么，怎么做</h2>
+      <div class="hbody">
+      <div class="cols">
+        <div class="box">
+          <h3>常用操作</h3>
+          <table class="kv">
+            <tr><th>一次放很多场</th><td>一次选多个文件，或者拖进整个文件夹。</td></tr>
+            <tr><th>只看其中几场</th><td>在上方列表里取消勾选不想看的。</td></tr>
+            <tr><th>改名字和颜色</th><td>直接在上方列表里改。</td></tr>
+            <tr><th>看具体数值</th><td>把鼠标移到图表上；手机上用手指点。</td></tr>
+            <tr><th>在很多场里找一场</th><td>点开下拉栏，输入名字或日期里的几个字。</td></tr>
+            <tr><th>去掉</th><td>去掉一场点行尾的 <kbd>×</kbd>，全部去掉点 <kbd>清空</kbd>。</td></tr>
+          </table>
+        </div>
+        <div class="box">
+          <h3>地图</h3>
+          <table class="kv">
+            <tr><th>打开</th><td>到「地图」标签，点 <kbd>打开 2D 地图</kbd> 或 <kbd>打开 3D 地图</kbd>。</td></tr>
+            <tr><th>2D 移动、缩放</th><td><kbd>拖动</kbd> 移动；<kbd>滚轮</kbd> 或双指缩放。</td></tr>
+            <tr><th>2D 看某一点</th><td>把鼠标停在轨迹上。</td></tr>
+            <tr><th>3D 旋转</th><td><kbd>拖动</kbd>；手机上用单指拖动。</td></tr>
+            <tr><th>3D 平移</th><td><kbd>Shift</kbd> + <kbd>拖动</kbd>，或右键拖动；手机上用双指。</td></tr>
+            <tr><th>3D 缩放</th><td><kbd>滚轮</kbd>；手机上用双指。</td></tr>
+            <tr><th>底图打不开</th><td>换一个「图源」，也就是底图的来源。</td></tr>
+            <tr><th>看哪里快、哪里慢</th><td>「着色」选速度、坡度或心率。选「比坡度预期快 / 慢」时，红色是比这一场自己的一般水平慢的路段。</td></tr>
+            <tr><th>看在哪里停过</th><td>勾上「停留点」。圆圈越大（3D 里柱子越高），停得越久。</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="callout">
+        <svg class="pic" viewBox="0 0 40 40" width="40" height="40" aria-hidden="true" focusable="false">
+          <circle class="b" cx="20" cy="20" r="16"/><ellipse cx="20" cy="20" rx="7" ry="16"/><path d="M4 20h32M7 12h26M7 28h26"/>
+        </svg>
+        <b>打开地图需要联网</b>地图服务会知道你在看哪个区域，但拿不到你的轨迹。
+      </div>
+      </div>
+      </section>
+
+      <section class="hsec hs4">
+      <h2>几个词的意思</h2>
+      <div class="hbody">
+          <table class="kv">
+            <tr><th>移动时间、停留</th><td>走得比每秒 0.3 米还慢就算停留。总耗时 = 移动时间 + 停留。</td></tr>
+            <tr><th>配速</th><td>跑 1 公里用的时间。6'30" 表示 6 分 30 秒，数字越小越快。</td></tr>
+            <tr><th>坡度</th><td>每前进 100 米升高多少米。+10% 是上坡，-10% 是下坡。</td></tr>
+            <tr><th>爬升速率</th><td>每小时升高多少米。上坡时比配速更能说明爬得快不快。</td></tr>
+            <tr><th>等效距离</th><td>把爬升折成距离：每爬升 100 米算 1 公里，加到实际距离上。</td></tr>
+            <tr><th>等效平路速度</th><td>把上下坡的影响换算掉以后，相当于在平路上跑多快。</td></tr>
+            <tr><th>手表里程</th><td>手表自己记的距离。页面是按坐标重新算的，两者会差一点。</td></tr>
+          </table>
+      </div>
+      </section>
+
+      <section class="hsec hs5">
+      <h2>常见问题</h2>
+      <div class="hbody">
+      <div class="faq">
+        <div class="qa"><b>距离和爬升为什么和手表、成绩证书上的不一样？</b>页面按文件里的坐标和海拔重新计算，差百分之几是正常的。各场用同一套算法，互相比较不受影响。</div>
+        <div class="qa"><b>载入时提示「没有找到轨迹点」？</b>文件里没有路线数据，或者不是 GPX、TCX 格式。请回到 App 里重新导出。室内运动没有路线，也会这样。</div>
+        <div class="qa"><b>有的图是空的，或者写着「没有心率数据」？</b>文件里没有对应的数据。比如事先规划的路线没有时间，就算不出速度。</div>
+        <div class="qa"><b>地图是灰的，一直加载不出来？</b>多半是这个图源在当前网络下连不上，换一个。都不行就选「无底图」，只看轨迹的形状。</div>
+        <div class="qa"><b>ITRA 估分准吗？</b>只是按速度做的估算，不是官方分数，误差有几十分。知道某一场的实际分数时，到「ITRA 估分」里标定一下会准一些。</div>
+        <div class="qa"><b>怎么把这个工具发给别人？</b>把这个网页文件（.html）直接发过去，对方用浏览器打开就能用。文件里不含你的任何轨迹。</div>
+        <div class="qa"><b>手机上能用吗？</b>可以试，但这个页面主要是在电脑浏览器上测试的。在聊天软件里直接点开可能不工作，这时请选「用浏览器打开」。</div>
+      </div>
+      </div>
+      </section>
+
+    </div>
+  </section>
+
+  <section class="panel" id="p-overview">
+    <div class="scroll"><table id="tOverview" class="data"></table></div>
+    <h3>和基准场比</h3>
+    <div class="bar"><span class="lbl">基准场 <span id="selBase"></span></span></div>
+    <div class="scroll"><table id="tIndex" class="data"></table></div>
+    <ul class="note">
+      <li>移动 / 停留：相邻两点间速度高于 0.3 m/s 算移动，否则算停留（手表自动暂停的空档也算停留）。</li>
+      <li>爬升 / 下降：海拔先做平滑，再按 3 米的阈值累计，所以和手表、赛事官方的数字会有出入。</li>
+      <li>上坡爬升速率：坡度 ≥5% 的移动路段里每小时爬升的米数。下坡配速：坡度 &lt;-5% 的移动路段的配速。</li>
+      <li>等效配速：总耗时 ÷（距离 + 爬升 ÷ 100 米）。后半程变化：按距离对半，后半程用时比前半程多（+）或少（-）的比例。</li>
+      <li>步频是每分钟迈多少步（两只脚都算）。有的手表只记一只脚，数值在 80 上下，页面会自动乘以 2。步幅是一步迈出去的距离：移动的距离 ÷ 步数。</li>
+      <li>心率、步频、步幅只有文件里带了才有，没有的显示 --。</li>
+      <li>距离按相邻坐标点之间的水平距离累加；「手表里程」是文件里手表自己累计的距离，两者会有百分之几的出入，分析一律用前者。</li>
+      <li>温度只有部分手表会写进文件。</li>
+      <li>和基准场比：把选中的那一场当作 100，其他各场的每一项算成它的百分之几，写在括号里；「综合」是五项的平均。勾选或取消别的轨迹不会改变这些数字，换基准场才会。</li>
+      <li>五项分别是：等效速度 =（距离 + 爬升 ÷ 100 米）÷ 总耗时；上坡爬升速率、平路速度（坡度 ±5% 以内）、下坡速度（坡度低于 -5%），这三项只算移动中的路段；后半程保持 = 后半程速度 ÷ 前半程速度，只比两个半程都跑过的坡度。</li>
+      <li>同一条路线的两场，五项都可以直接比。路线不同时，平路和下坡的速度很看路面（台阶、碎石和土路差很多），这两项和「综合」只能当参考。</li>
+    </ul>
+  </section>
+
+  <section class="panel" id="p-splits">
+    <div class="bar"><span class="lbl">轨迹 <span id="selSplit"></span></span></div>
+    <canvas id="cSplits" class="chart"></canvas>
+    <div class="scroll"><table id="tSplits" class="data"></table></div>
+    <ul class="note">
+      <li>配速按总用时计算，包含停留。</li>
+      <li>步频是每分钟的步数，只在迈步的时候算；步幅是移动的距离 ÷ 步数。文件里没有的显示 --。</li>
+    </ul>
+  </section>
+
+  <section class="panel" id="p-profile">
+    <div class="bar"><label>横轴 <select id="selX"><option value="d">距离</option><option value="t">时间</option></select></label></div>
+    <canvas id="cEle" class="chart"></canvas>
+    <canvas id="cSpd" class="chart"></canvas>
+    <canvas id="cHr" class="chart"></canvas>
+    <canvas id="cCad" class="chart"></canvas>
+    <canvas id="cStride" class="chart"></canvas>
+    <canvas id="cTemp" class="chart" style="display:none"></canvas>
+    <ul class="note">
+      <li>速度、心率、步频、步幅都按每 250 米（横轴为时间时按每 2 分钟）取平均。速度包含停留，所以停下来的地方会出现低谷。</li>
+      <li>步频是每分钟的步数（两只脚都算），只在迈步的时候算；步幅是移动的距离 ÷ 步数。文件里没有心率或步频时，对应的图是空的。</li>
+    </ul>
+  </section>
+
+  <section class="panel" id="p-grade">
+    <div class="grid2">
+      <canvas id="cG1" class="chart"></canvas>
+      <canvas id="cG2" class="chart"></canvas>
+      <canvas id="cG3" class="chart"></canvas>
+      <canvas id="cG4" class="chart"></canvas>
+      <canvas id="cG5" class="chart"></canvas>
+      <canvas id="cG6" class="chart"></canvas>
+    </div>
+    <div class="scroll"><table id="tBuckets" class="data"></table></div>
+    <h3>爬坡耐力</h3>
+    <canvas id="cClimb" class="chart"></canvas>
+    <div class="scroll"><table id="tClimb" class="data"></table></div>
+    <ul class="note">
+      <li>每个点是移动中约 50 米的一小段，停留不计入。粗线是每 6% 坡度一档的中位数，色带是 25~75 分位。</li>
+      <li>不同比赛的路面、天气、拥堵都不一样，这些图只能说明「在这个坡度上实际跑出了多快」。</li>
+      <li>虚线是 Tobler 徒步函数，一个经典的步行速度模型，仅作参照。</li>
+      <li>步频和步幅两张图：坡越陡，通常步频和步幅都往下掉；从跑变成走的地方，步频会明显掉一截。文件里没有步频时这两张图是空的。</li>
+      <li>爬坡耐力：在全程里找出升高 50、100、200、300、500 米用时最短的那一段，换算成每小时爬升多少米。中途停下来的时间也算在里面。曲线往右掉得越少，说明长坡越能保持。路线上没有这么高的坡时空着。</li>
+      <li>坡太缓时爬升速率天然就低，所以不同路线之间比这条曲线，要留意坡的陡缓差多少。</li>
+    </ul>
+  </section>
+
+  <section class="panel" id="p-terrain">
+    <div class="scroll"><table id="tTerr" class="data"></table></div>
+    <div class="grid2">
+      <canvas id="cTerrTime" class="chart"></canvas>
+      <canvas id="cTerrSpd" class="chart"></canvas>
+    </div>
+    <h3>一场里的每个大坡</h3>
+    <div class="bar"><span class="lbl">轨迹 <span id="selTerr"></span></span></div>
+    <canvas id="cTerrEle" class="chart"></canvas>
+    <div class="scroll"><table id="tSlopes" class="data"></table></div>
+    <ul class="note">
+      <li>上坡、平路、下坡是按路线本身分的，不看跑得快慢：每 50 米看一次坡度，超过 +3% 算上坡，低于 -3% 算下坡，其余算平路；不到 150 米的小段并进相邻的一段。同一条路线的两场，分出来的段是一样的。</li>
+      <li>时间和速度只算移动时间，不含停留。爬升（下降）速率 = 这些路段一共升（降）了多少米 ÷ 移动时间。</li>
+      <li>大坡：从一个低点到下一个高点（下坡反过来），中途往回走不超过 30 米的算同一个坡，升降 100 米以上才列出来。所以一个大坡里可以夹着几小段平路。</li>
+      <li>大坡表里的「用时」包含停留；配速和升降速率只算移动时间。</li>
+      <li>心率、步频、步幅只有文件里带了才有，没有的显示 --。</li>
+    </ul>
+  </section>
+
+  <section class="panel" id="p-gap">
+    <canvas id="cGap1" class="chart"></canvas>
+    <div class="scroll"><table id="tFade" class="data"></table></div>
+    <canvas id="cGap2" class="chart"></canvas>
+    <canvas id="cCost" class="chart"></canvas>
+    <h3>后半程对前半程</h3>
+    <canvas id="cHalf" class="chart"></canvas>
+    <div class="scroll"><table id="tHalf" class="data"></table></div>
+    <ul class="note">
+      <li>做法：把当前勾选的所有轨迹的样本合在一起，求出「各个坡度相对平路慢多少」的曲线（第三张图），
+      再用它把每一小段的速度换算成等效的平路速度，最后沿比赛进度取滚动中位数（窗口为全程的 8%）。</li>
+      <li>这条换算曲线是用当前勾选的轨迹自己拟合的，所以数值只能在同一批轨迹之间比较，
+      换一批轨迹数值会变，也不能和 Strava 等平台的 GAP 直接比。</li>
+      <li>走势表：「开头」「最后」是前 25%、后 25% 路程的等效平路速度（中位数）。「全程走势」是把全程分成十段、各取中位数，再拟合成一条直线，看终点比起点快（+）还是慢（-）了多少。</li>
+      <li>掉速点：从这里起一直到终点前，等效平路速度都比开头那 25% 慢 12% 以上。最后 6% 的路程不看，因为终点前常有冲刺。写「没有」是指没有这样一路慢到底的情况，中途慢一阵又恢复的不算。第一张图上的竖虚线就是掉速点。</li>
+      <li>后半程对前半程：按路程对半分，看同一种坡度上后半程比前半程快了还是慢了。只比两个半程都跑过的坡度（每 5% 一档对齐），所以这里的速度和「坡度表现」里的配速不完全一样；某一档两个半程对不上时空着。这部分不用上面的换算曲线，换一批轨迹数值不变。</li>
+    </ul>
+  </section>
+
+  <section class="panel" id="p-compare">
+    <div id="cmpEmpty" class="empty"></div>
+    <div id="cmpBody">
+      <div class="bar">
+        <span class="lbl">基准 A <span id="selA"></span></span>
+        <span class="lbl">对比 B <span id="selB"></span></span>
+        <label>检查点间距 <select id="selCk"><option value="0.5">0.5 km</option><option value="1" selected>1 km</option><option value="2">2 km</option><option value="5">5 km</option></select></label>
+      </div>
+      <div id="cmpSummary" class="summary"></div>
+      <div id="cmpSeg">
+        <h3>公共路段逐段对比</h3>
+        <div class="scroll"><table id="tSegs" class="data"></table></div>
+        <div class="grid2">
+          <canvas id="cSegGap" class="chart"></canvas>
+          <canvas id="cSegBar" class="chart"></canvas>
+        </div>
+      </div>
+      <div id="cmpRoute">
+        <h3>整条路线对比</h3>
+        <div id="routeSummary" class="summary"></div>
+        <canvas id="cRouteGap" class="chart"></canvas>
+        <div class="scroll"><table id="tAttr" class="data"></table></div>
+        <canvas id="cAttr" class="chart"></canvas>
+        <canvas id="cRoutePace" class="chart"></canvas>
+        <canvas id="cRouteHr" class="chart"></canvas>
+        <canvas id="cRouteCad" class="chart"></canvas>
+        <canvas id="cRouteStride" class="chart"></canvas>
+        <div class="scroll"><table id="tCks" class="data"></table></div>
+      </div>
+      <ul class="note">
+        <li>B 的列表按两条轨迹中心点的距离从近到远排列，同一条路线的会排在最前面；轨迹多的时候可以在下拉栏里输入关键字筛选。</li>
+        <li>时间差都是 B 减 A，正数表示 B 更慢。</li>
+        <li>时间差按总用时算，没有扣掉停留：曲线上的竖直台阶、局部配速图上的尖峰，通常是 B 在那里停了下来，不是跑得慢。</li>
+        <li>公共路段要求两条轨迹同方向、连续重合至少 400 米。</li>
+        <li>「时间差出在哪种坡度上」：把对上的路线每 100 米切成一小段，同一小段路两场各用了多少移动时间，按这一小段的坡度归到五档里。各档相加正好是移动时间之差，再加上停留之差就是总用时之差。只有两条路线重合 80% 以上时才有这张表。</li>
+        <li>心率、步频（每分钟步数）、步幅（米）两场并排列出，写成「A / B」。同一段路上，慢下来是因为步子变小了还是迈得慢了，看这两列；速度慢了心率却没降，多半是累了。文件里没有的显示 --，图是空的。</li>
+        <li>已知问题：起点和终点在同一处时，刚出发的一小段可能被配到对方的回程上而漏掉，这时整条路线的对比不是从起点开始的。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="panel" id="p-stops">
+    <div class="scroll"><table id="tStopSum" class="data"></table></div>
+    <div class="bar"><span class="lbl">轨迹 <span id="selStop"></span></span></div>
+    <canvas id="cStops" class="chart"></canvas>
+    <div class="scroll"><table id="tStops" class="data"></table></div>
+    <ul class="note">
+      <li>这里只列出持续 60 秒以上的停留；相隔不到 20 秒的两次停留算作一次。</li>
+      <li>手表自动暂停或信号中断造成的记录空档也会被算成停留。</li>
+      <li>「全部停留」是总耗时减去移动时间，包含所有短暂的停顿。</li>
+    </ul>
+  </section>
+
+  <section class="panel" id="p-itra">
+    <p class="lead"><b>1000 分的人能跑多快</b>（等效速度，ekm/h）。比赛越长越慢，所以按比赛长度分成六档：</p>
+    <div class="bar" id="itraInputs"></div>
+    <div id="itraMsg" class="formerr" style="display:none"></div>
+    <div class="bar">
+      <button class="btn" id="btnItraUndo" type="button" style="display:none">撤销改动</button>
+      <button class="btn" id="btnItraReset" type="button">恢复默认</button>
+      <span id="itraState" class="loader-tip"></span>
+    </div>
+    <div class="bar">
+      <span class="lbl">用一场知道实际分数的比赛来标定 <span id="selItra"></span></span>
+      <label>它的实际分数 <input type="number" id="inItraScore" step="1" min="50" max="1000" class="num"></label>
+      <button class="btn primary" id="btnItraCal" type="button">标定</button>
+    </div>
+    <div id="itraCalMsg" class="formerr" style="display:none"></div>
+    <div class="scroll"><table id="tItra" class="data"></table></div>
+    <canvas id="cItra" class="chart"></canvas>
+    <canvas id="cItraCurve" class="chart"></canvas>
+    <div class="explain">
+      <h4>怎么算的</h4>
+      <p>这是按速度做的估算，不是 ITRA 官方的算法，结果只能当参考。</p>
+      <ol>
+        <li>把爬升折成距离：每爬升 100 米算 1 公里，加到实际距离上，得到「等效距离」。</li>
+        <li>等效距离 ÷ 总耗时 = 等效速度。总耗时包含中途停下来的时间，和比赛成绩的算法一样。</li>
+        <li>和「1000 分的人在同样长的比赛里能跑多快」比：估分 = 1000 × 你的等效速度 ÷ 1000 分的等效速度。</li>
+      </ol>
+      <p>「组别」是 ITRA 按等效距离分的档：XXS 不到 25，XS 25~44，S 45~74，M 75~114，L 115~154，XL 155~209，XXL 210 以上。</p>
+
+      <h4>最上面那六个数字</h4>
+      <p>比赛越长，再厉害的人也跑得越慢，所以「1000 分的等效速度」不是一个固定的数。六个数字分别是等效距离为 20、40、80、120、160、250 时的取值；长度在两档之间的比赛，按第二张图里的曲线取中间的数；比 20 短的按第一档算，比 250 长的按最后一档算。图上的彩色方块是载入的比赛。</p>
+      <p>这些数字可以改，改完马上生效。页面只接受合理的数字：</p>
+      <ul>
+        <li>每个数要在 10 到 30 之间；</li>
+        <li>短距离的数不能比长距离的小（可以相等）。</li>
+      </ul>
+      <p>不符合时，出问题的格子会变红，并说明原因；这时表格继续按上一组合法的数字计算。点「撤销改动」可以回到那一组数字。</p>
+      <p>默认值里，只有 40 这一档用一场比赛的实际分数对过，其余各档是粗略的经验值。</p>
+
+      <h4>标定</h4>
+      <p>如果知道某一场的实际分数，选中那一场、填上分数、点「标定」。页面会把六个数字按同一个比例放大或缩小，让这一场的估分正好等于实际分数，其他比赛的估分也跟着变准。</p>
+
+      <h4>误差有多大</h4>
+      <p>表里的「误差」是估分大概会偏多少，可以粗略理解为：真实分数大约有三分之二的可能落在「区间」那一列里。它由下面几项互不相关的误差合成（平方相加再开方）：</p>
+      <ul>
+        <li>「1000 分的等效速度」本身不准：±10%。没标定时这是最大的一项；用同一组别的比赛标定后就没有了。</li>
+        <li>爬升量不准：±10%。手表气压计测的爬升和官方数据会有出入；爬升在等效距离里占得越多，对分数的影响越大。</li>
+        <li>ITRA 每场单独校准：±25 分。官方会按每场完赛者以往的水平来调整，不是套一个固定公式。</li>
+        <li>公式本身的简化：没标定时 ±20 分（速度和分数并不完全成正比）；标定后换成约 ±17 分（同一组别里路线长短不同带来的差别）。</li>
+      </ul>
+      <p>前两项跟着分数走，所以分数越高误差越大。把鼠标停在表里「误差」那一格上，可以看到每一项各是多少。</p>
+      <p>标定只在同一组别内可靠，其他组别的比赛仍按没标定算。</p>
+
+      <h4>还要留意的两点</h4>
+      <ul>
+        <li>官方公布的距离和爬升通常比手表记的小，实际分数会因此再低 10~20 分。这一点没有算进上面的误差。</li>
+        <li>80 及以上那几档的默认数字没有用实际分数验证过，长距离比赛的估分可能整体偏高或偏低。最好用一场长度相近、知道实际分数的比赛标定。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="panel" id="p-map">
+    <div class="bar">
+      <button class="btn primary" id="btn2d" type="button">打开 2D 地图</button>
+      <button class="btn primary" id="btn3d" type="button">打开 3D 地图</button>
+      <button class="btn" id="btnMapOff" type="button" style="display:none">关闭地图</button>
+      <label>图源 <select id="selSrc"></select></label>
+      <label>着色 <select id="selColor">
+        <option value="track">按轨迹</option>
+        <option value="speed">速度</option>
+        <option value="dev">比坡度预期快 / 慢</option>
+        <option value="grade">坡度</option>
+        <option value="hr">心率</option>
+      </select></label>
+      <label><input type="checkbox" id="chkStops" checked> 停留点</label>
+      <label id="lblKm"><input type="checkbox" id="chkKm" checked> 公里标</label>
+    </div>
+    <div class="bar" id="barCustom" style="display:none">
+      <label class="grow">瓦片地址 <input type="text" id="inUrl" placeholder="https://example.com/{z}/{x}/{y}.png"></label>
+      <label><input type="checkbox" id="chkGcj"> 国内偏移坐标 (GCJ-02)</label>
+      <button class="btn" id="btnUrl" type="button">应用</button>
+    </div>
+    <div class="bar" id="bar3d" style="display:none">
+      <span class="lbl">地形范围 <span id="selRegion"></span></span>
+      <label>地形夸张 <input type="range" id="rngExag" min="1" max="3" step="0.1" value="1.5"> <span id="exagVal">1.5x</span></label>
+      <label>贴图清晰度 <select id="selQuality"><option value="std">标准</option><option value="high">高（加载更慢）</option></select></label>
+      <span class="loader-tip">拖动旋转，右键或 Shift+拖动平移，滚轮缩放；手机上单指拖动旋转，双指缩放和平移</span>
+    </div>
+    <div id="mapLegend" class="legend"></div>
+    <div id="mapBox" class="mapbox"></div>
+    <ul class="note">
+      <li>地图默认不加载。打开后，浏览器会向所选图源请求这一带的底图瓦片，对方因此能知道你在看哪个区域；轨迹本身不会发出去。</li>
+      <li>3D 的地形起伏来自 AWS 上公开的全球高程数据，和图源无关；地形会比轨迹范围往外多画 10 公里，轨迹附近用精细的地形和贴图，外圈较粗。</li>
+      <li>选「无底图」时完全不联网：2D 只画轨迹，3D 用 GPX 里的海拔把轨迹立起来。</li>
+      <li>高德用的是国内偏移坐标，页面已自动换算；自定义地址如果也是偏移坐标，请勾上对应选项。</li>
+      <li>高德的地址不是官方公开接口，以后可能失效。</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer class="foot">单个网页文件，可离线使用（地图除外）。把这个 .html 文件直接发给别人就能用。</footer>
+
+<script>
+/*__JS__*/
+</script>
+</body>
+</html>

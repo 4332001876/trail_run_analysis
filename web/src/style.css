@@ -1,0 +1,287 @@
+/*
+  设计方案（借鉴航空安全卡片里提高清晰度的做法）
+
+  颜色  深蓝 #14284b：所有文字和描边。白：所有内容区。浅灰 #f4f4f1：页面背景和表头。
+        深蓝也用作最重要的底色：选中的标签、「三步开始」的标题栏（这一块的正文区是它的浅色 #e9eef5）。
+        另有四种纯色，各管一件事，不混用：
+          黄 #ffe01b  主要操作（「选择轨迹文件」这类按钮）和重点词
+          琥珀 #f2b84b 只用在教程的一个标题栏上
+          蓝 #35b8ee  选中、悬停（浅蓝 #e4f5fd）和图示里的轨迹线
+          红 #e3262f  箭头和警告，别处不用
+        鲜艳的颜色只用在小面积上：按钮、标题栏、图示。大面积的底色只有白、浅灰和上面两种很浅的颜色。
+  描边  容器、按钮、输入框一律 2px 深蓝实线；内容区里面的分隔线用 1px 浅灰。
+  形状  圆角 6px（按钮、输入框）或 8px（容器），不超过 8px；只有步骤编号是圆形。
+  平涂  不用渐变，不用阴影。
+  文字  标题和编号用 DIN 一类的标识字体（Windows 上是 Bahnschrift），正文用 Helvetica / Arial 加系统中文字体。
+  教程  用编号、箭头和图示说话，每格只讲一件事。
+*/
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-size: 14px; line-height: 1.5; color: #14284b; background: #f4f4f1;
+}
+.top h1, .help h2, .help h3, .stepno, .card-t, .panel h3, .empty b, table.data caption {
+  font-family: "DIN Alternate", Bahnschrift, "DIN Next", "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+/* ---------- 页头 ---------- */
+.top { padding: 15px 20px 13px; background: #fff; border-bottom: 2px solid #14284b; }
+.top h1 { display: inline-block; margin: 0 16px 0 0; font-size: 24px; line-height: 1.2; color: #14284b; letter-spacing: 1px; }
+.hint { color: #4a5a75; font-size: 13px; }
+
+/* ---------- 载入区和轨迹列表 ---------- */
+.loader, .tracks, .panel, .foot { margin: 12px 16px; }
+.loader { background: #fff; border: 2px dashed #14284b; border-radius: 8px; padding: 12px 16px; }
+.loader-row > * { margin: 3px 8px 3px 0; vertical-align: middle; }
+.loader-tip { color: #4a5a75; font-size: 13px; }
+.status { font-size: 13px; color: #14284b; margin-top: 4px; min-height: 0; }
+.status .err { color: #c21822; }
+.vh { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; left: -100px; top: 0; }
+
+.btn {
+  display: inline-block; padding: 6px 14px; border: 2px solid #14284b; border-radius: 6px;
+  background: #fff; color: #14284b; font-size: 14px; font-weight: bold; font-family: inherit; line-height: 1.4; cursor: pointer;
+  -webkit-user-select: none; user-select: none;
+}
+.btn:hover { background: #e4f5fd; }
+.btn.primary { background: #ffe01b; }
+.btn.primary:hover { background: #f5d000; }
+.btn.on, .btn.on:hover { background: #14284b; color: #fff; }
+.loader .btn.primary { padding: 9px 22px; font-size: 16px; }
+.btn:focus-visible, .nav button:focus-visible, .card:focus-visible, .combo-btn:focus-visible { outline: 2px solid #35b8ee; outline-offset: 2px; }
+
+.drop-mask {
+  display: none; position: fixed; left: 0; top: 0; right: 0; bottom: 0; z-index: 50;
+  background: rgba(228, 245, 253, .92); border: 2px dashed #14284b;
+  font-size: 28px; font-weight: bold; color: #14284b; text-align: center; padding-top: 30vh; pointer-events: none;
+}
+.drop-mask.show { display: block; }
+
+.tracks { background: #fff; border: 2px solid #14284b; border-radius: 8px; padding: 6px 14px 8px; }
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tracktable { border-collapse: collapse; width: 100%; }
+.tracktable td { padding: 4px 6px; white-space: nowrap; border-bottom: 1px solid #dfe3ea; }
+.tracktable tr:last-child td { border-bottom: 0; }
+/* 列表里的名称框平时用浅色描边，免得一排深色框抢眼；指到或点进去时变深 */
+.tracktable input[type=text] { width: 230px; max-width: 46vw; padding: 3px 7px; border: 2px solid #c9d0db; border-radius: 6px; font: inherit; color: #14284b; background: #fff; }
+.tracktable input[type=text]:hover, .tracktable input[type=text]:focus { border-color: #14284b; outline: 0; }
+.tracktable input[type=color] { width: 30px; height: 24px; padding: 0; border: 2px solid #14284b; border-radius: 4px; background: #fff; vertical-align: middle; }
+.tracktable .meta { color: #14284b; font-size: 13px; }
+.tracktable .warn { color: #c21822; font-size: 12px; }
+.tracktable .x { border: 0; background: none; color: #4a5a75; font-size: 18px; line-height: 1; cursor: pointer; padding: 0 6px; }
+.tracktable .x:hover { color: #c21822; }
+
+/* ---------- 导航栏和面板 ---------- */
+.nav {
+  margin: 12px 16px 0; padding: 5px; white-space: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  background: #fff; border: 2px solid #14284b; border-radius: 8px;
+}
+.nav button {
+  border: 0; border-radius: 5px; background: none; font: inherit; font-size: 15px;
+  padding: 7px 12px 7px 10px; margin: 0 2px 0 0; color: #14284b; cursor: pointer;
+}
+.nav button:hover { background: #e4f5fd; }
+.nav button.on, .nav button.on:hover { background: #14284b; color: #fff; font-weight: bold; }
+
+.panel { display: none; background: #fff; border: 2px solid #14284b; border-radius: 8px; padding: 16px 18px; }
+.panel.on { display: block; }
+.panel h3 { font-size: 16px; margin: 18px 0 6px; color: #14284b; }
+.bar { margin: 4px 0 8px; }
+.bar > * { margin: 3px 12px 3px 0; vertical-align: middle; }
+.bar label { display: inline-block; white-space: nowrap; }
+.bar .lbl { display: inline-block; max-width: 100%; }   /* 文字加下拉栏，窄屏上允许换行 */
+.lead { margin: 2px 0 8px; font-size: 14px; }
+.bar label.grow input[type=text] { width: 420px; max-width: 70vw; }
+.bar select, .bar input[type=text] { font: inherit; color: #14284b; padding: 4px 7px; border: 2px solid #14284b; border-radius: 6px; background: #fff; max-width: 70vw; }
+.bar input[type=range] { vertical-align: middle; width: 120px; }
+.bar input.num { font: inherit; color: #14284b; width: 84px; padding: 4px 7px; border: 2px solid #14284b; border-radius: 6px; background: #fff; }
+.bar select:focus, .bar input[type=text]:focus, .bar input.num:focus, .combo-search:focus { outline: 2px solid #35b8ee; outline-offset: 1px; }
+.bar input.bad { border-color: #e3262f; background: #fdeaea; }
+.formerr { color: #c21822; background: #fdeaea; border: 2px solid #e3262f; border-radius: 6px; padding: 7px 12px; font-size: 13px; line-height: 1.6; margin: 2px 0 8px; max-width: 900px; }
+
+.combo { position: relative; display: inline-block; vertical-align: middle; }
+.combo-btn { font: inherit; font-size: 14px; line-height: 1.5; padding: 4px 9px; border: 2px solid #14284b; border-radius: 6px; background: #fff; color: #14284b; cursor: pointer; max-width: 70vw; text-align: left; }
+.combo-btn:hover { background: #e4f5fd; }
+.combo-text { display: inline-block; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+.combo-arrow { margin-left: 8px; color: #14284b; }
+.combo-pop { position: absolute; left: 0; top: 100%; margin-top: 3px; z-index: 30; width: 340px; max-width: 86vw; background: #fff; border: 2px solid #14284b; border-radius: 8px; padding: 6px; white-space: normal; }
+.combo-search { display: block; width: 100%; font: inherit; color: #14284b; padding: 5px 9px; border: 2px solid #14284b; border-radius: 6px; margin-bottom: 5px; }
+.combo-list { max-height: 300px; overflow-y: auto; -webkit-overflow-scrolling: touch; position: relative; }
+.combo-item { padding: 6px 9px; border-radius: 4px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.combo-item.hi, .combo-item:hover { background: #e4f5fd; }
+.combo-item.sel { font-weight: bold; }
+.combo-sub { float: right; margin-left: 10px; color: #4a5a75; font-weight: normal; font-size: 12px; }
+.combo-none { padding: 6px 8px; color: #4a5a75; font-size: 12px; }
+
+/* 每个面板底部的说明：一条一行 */
+.note { color: #4a5a75; font-size: 13px; line-height: 1.7; margin: 8px 0 2px; max-width: 1000px; }
+ul.note { margin: 14px 0 2px; padding: 10px 0 0 18px; border-top: 1px solid #dfe3ea; }
+ul.note li { margin: 1px 0; }
+.tracks .note { font-size: 12px; margin: 4px 0 0; }
+
+.explain { color: #14284b; font-size: 13px; line-height: 1.7; max-width: 900px; margin-top: 14px; padding: 4px 16px 12px; background: #f4f4f1; border: 2px solid #14284b; border-radius: 8px; }
+.explain h4 { font-size: 14px; color: #14284b; margin: 14px 0 4px; }
+.explain p { margin: 4px 0; }
+.explain ol, .explain ul { margin: 4px 0; padding-left: 24px; }
+.explain li { margin: 2px 0; }
+.empty { color: #4a5a75; padding: 34px 10px; text-align: center; font-size: 15px; line-height: 2; }
+.empty b { font-size: 22px; color: #14284b; }
+.summary { margin: 6px 0; font-size: 14px; }
+
+.chart { display: block; width: 100%; margin: 6px 0 10px; }
+.grid2 { font-size: 0; }
+.grid2 > .chart { display: inline-block; width: 50%; vertical-align: top; }
+
+table.data { border-collapse: collapse; font-size: 13px; margin: 4px 0; }
+/* 表格标题：和图表标题同一个分量，靠左，跟表格一起滚动 */
+table.data caption { caption-side: top; text-align: left; padding: 10px 0 6px; font-size: 16px; font-weight: bold; color: #14284b; }
+table.data th, table.data td { padding: 6px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid #dfe3ea; }
+table.data th { background: #f4f4f1; color: #14284b; font-weight: bold; border-bottom: 2px solid #14284b; position: sticky; top: 0; }
+table.data tr.base td { background: #f4f4f1; }   /* 「和基准场比」里的基准那一行 */
+table.data tr:hover td { background: #e4f5fd; }
+table.data th.l, table.data td.l { text-align: left; }
+table.data tr.sum td { font-weight: bold; border-top: 2px solid #14284b; }
+table.data td.pos { color: #c21822; }
+table.data td.neg { color: #2a7d1e; }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+
+/* ---------- 图示 ----------
+   和描边同一套规则：2px 深蓝线、纯色平涂。轨迹线用蓝色，箭头和禁止标志用红色。 */
+.pic { display: block; overflow: visible; }
+.pic * { fill: none; stroke: #14284b; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.pic .w { fill: #fff; } .pic .g { fill: #d5dbe4; } .pic .b { fill: #35b8ee; } .pic .y { fill: #ffe01b; }
+.pic .n { fill: #6aa884; } .pic .r { fill: #e3262f; } .pic .v { fill: #14284b; }
+.pic .t { stroke: #35b8ee; stroke-width: 3; }
+.pic .a { stroke: #e3262f; stroke-width: 4; }
+.pic .d { stroke-dasharray: 5 4; }
+.pic text { stroke: none; fill: #14284b; font: bold 15px Arial, Helvetica, sans-serif; }
+/* 导航栏里的小图标：和教程卡片是同一套图，缩到 24px，线条相应加粗；选中时底色是深蓝，线条换成白色 */
+.nav .pic { display: inline-block; vertical-align: -6px; margin-right: 6px; pointer-events: none; }
+.nav .pic * { stroke-width: 3; }
+.nav .pic .t, .nav .pic .a { stroke-width: 5; }
+.nav button.on .pic * { stroke: #fff; }
+.nav button.on .pic .w { fill: none; }
+.nav button.on .pic .v { fill: #fff; }
+.nav button.on .pic .t { stroke: #35b8ee; }
+.nav button.on .pic .a { stroke: #ff6b72; }
+
+/* ---------- 使用教程 ----------
+   教程面板自己不画框，五个板块各是一张带描边的卡片，中间留出间隔。
+   五个板块都是白底，标题栏各用一种纯色；第一块的正文区多一层很浅的绿。板块里的格子一律白底。 */
+#p-help { background: none; border: 0; padding: 0; }
+.help { max-width: 1120px; color: #14284b; font-size: 15px; line-height: 1.6; }
+.hsec { margin: 0 0 20px; background: #fff; border: 2px solid #14284b; border-radius: 8px; overflow: hidden; }
+.hsec:last-child { margin-bottom: 0; }
+.help h2 { margin: 0; padding: 9px 18px; font-size: 20px; line-height: 1.4; color: #14284b; border-bottom: 2px solid #14284b; }
+.help h2 small { font-size: 13px; font-weight: normal; margin-left: 10px; font-family: Inter, "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; }
+.hbody { padding: 16px 18px 18px; }
+
+.hs1 h2 { background: #14284b; color: #fff; }
+.hs1 .hbody { background: #e9eef5; }   /* 深蓝的浅色，把最重要的一块托出来，但不刺眼 */
+.hs2 h2 { background: #35b8ee; }
+.hs3 h2 { background: #ffe01b; }
+.hs4 h2 { background: #f2b84b; }
+.hs5 h2 { background: #d5dbe4; }
+
+/* 三步开始：整页字号最大的部分。圆形编号、短标题、一张图、一句话，中间用红箭头连起来 */
+.steps { list-style: none; margin: 0; padding: 0; display: -webkit-flex; display: flex; }
+.step { -webkit-flex: 1 1 0; flex: 1 1 0; min-width: 0; padding: 16px 18px 18px; background: #fff; border: 2px solid #14284b; border-radius: 8px; }
+.step-arrow { -webkit-flex: none; flex: none; -webkit-align-self: center; align-self: center; width: 44px; margin: 0 8px; }
+.step-h { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+.stepno { -webkit-flex: none; flex: none; display: block; width: 48px; height: 48px; margin-right: 12px; border-radius: 50%; background: #14284b; color: #fff; text-align: center; font-weight: bold; font-size: 28px; line-height: 48px; }
+.help .step h3 { font-size: 25px; line-height: 1.3; margin: 0; color: #14284b; }
+.step .pic { margin: 16px auto 14px; max-width: 100%; }
+.step p { font-size: 17px; line-height: 1.5; margin: 0; color: #14284b; }
+.step b { background: #ffe01b; padding: 0 5px; border-radius: 3px; }
+
+/* 提示条：白底、带一个图示 */
+.callout { position: relative; margin: 14px 0 0; padding: 11px 16px 11px 66px; min-height: 64px; background: #fff; border: 2px solid #14284b; border-radius: 8px; font-size: 15px; line-height: 1.6; color: #14284b; }
+.callout .pic { position: absolute; left: 14px; top: 50%; margin-top: -20px; }
+.callout b { display: block; font-size: 16px; }
+
+/* 标签卡片：一个图标、一个名字、一个问题。点一下就打开那个标签 */
+.cards { margin: -6px; display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; }
+.card {
+  display: block; position: relative; width: 100%; width: calc(33.333% - 12px); min-height: 76px; margin: 6px; padding: 13px 30px 12px 76px;
+  border: 2px solid #14284b; border-radius: 8px; background: #fff;
+  font: inherit; color: inherit; text-align: left; cursor: pointer;
+}
+.card:hover { background: #e4f5fd; }
+.card .pic { position: absolute; left: 14px; top: 50%; margin-top: -24px; }
+.card:after { content: "\203A"; position: absolute; right: 12px; top: 50%; margin-top: -15px; font: bold 24px/28px Arial, Helvetica, sans-serif; color: #14284b; }
+.card-t { display: block; font-size: 18px; line-height: 1.35; font-weight: bold; color: #14284b; }
+.card-q { display: block; font-size: 14px; color: #4a5a75; }
+
+/* 「想做什么 → 怎么做」的对照表 */
+.cols { margin: -6px; display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; -webkit-align-items: flex-start; align-items: flex-start; }
+.box { -webkit-flex: 1 1 400px; flex: 1 1 400px; min-width: 0; margin: 6px; padding: 0 16px 4px; border: 2px solid #14284b; border-radius: 8px; background: #fff; overflow: hidden; }
+.help .box h3 { font-size: 17px; margin: 0 -16px 0; padding: 7px 16px; color: #14284b; border-bottom: 2px solid #14284b; }
+.kv { width: 100%; border-collapse: collapse; font-size: 15px; }
+.kv th, .kv td { text-align: left; vertical-align: top; padding: 8px 0; border-top: 1px solid #dfe3ea; }
+.kv tr:first-child th, .kv tr:first-child td { border-top: 0; }
+.kv th { width: 34%; padding-right: 14px; font-weight: bold; color: #14284b; }
+.kv td { color: #14284b; }
+.hs4 .hbody { padding-top: 6px; padding-bottom: 8px; }
+.hs4 .kv th { width: 22%; }
+kbd { display: inline-block; padding: 0 7px; margin: 0 1px; border: 2px solid #14284b; border-radius: 4px; background: #fff; color: #14284b; font: bold 13px/20px Inter, "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif; white-space: nowrap; vertical-align: 1px; }
+
+.faq { margin: -6px; display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; }
+.qa { width: 100%; width: calc(50% - 12px); margin: 6px; padding: 11px 16px 12px; border: 2px solid #14284b; border-radius: 8px; background: #fff; font-size: 14px; color: #14284b; }
+.qa b { display: block; font-size: 16px; margin-bottom: 2px; }
+
+/* ---------- 地图 ---------- */
+.legend { font-size: 12px; color: #14284b; margin: 2px 0 6px; min-height: 0; }
+/* 色标是一格一格的纯色块，和地图上实际用的分档一致 */
+.legend .ramp { display: inline-block; width: 224px; max-width: 50vw; height: 14px; margin: 0 8px; vertical-align: middle; border: 2px solid #14284b; border-radius: 3px; overflow: hidden; font-size: 0; }
+.legend .ramp i { float: left; width: 6.25%; height: 100%; }
+
+.mapbox { position: relative; overflow: hidden; height: 620px; max-height: 76vh; min-height: 320px; border: 2px solid #14284b; border-radius: 8px; background: #d5dbe4;
+  -webkit-user-select: none; user-select: none; touch-action: none; cursor: grab; }
+.mapbox.off { height: auto; min-height: 0; background: #f4f4f1; border: 2px dashed #14284b; color: #4a5a75; padding: 30px 16px; text-align: center; font-size: 15px; cursor: default; touch-action: auto; }
+.tr-tiles { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.tr-tiles img { position: absolute; max-width: none; border: 0; padding: 0; margin: 0; -webkit-user-drag: none; }
+.tr-ov, .tr-gl { position: absolute; left: 0; top: 0; }
+.tr-labels { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden; }
+.tr-label { position: absolute; white-space: nowrap; font-size: 12px; padding: 1px 6px; border-radius: 4px;
+  background: rgba(20, 40, 75, .85); color: #fff; -webkit-transform: translate(-50%, -135%); transform: translate(-50%, -135%); }
+.tr-label.tr-wpt { background: #ffe01b; color: #14284b; border: 2px solid #14284b; }
+.tr-label.tr-stop { background: #fff; color: #14284b; border: 2px solid #14284b; font-weight: bold; }
+.tr-attr { position: absolute; right: 0; bottom: 0; font-size: 11px; color: #14284b; background: rgba(255, 255, 255, .8); padding: 1px 6px; border-radius: 6px 0 0 0; pointer-events: none; }
+.tr-msg { position: absolute; left: 10px; top: 10px; right: 56px; font-size: 13px; color: #14284b; background: #ffe01b; border: 2px solid #14284b; padding: 5px 10px; border-radius: 6px; }
+.tr-tip { position: absolute; font-size: 12px; line-height: 1.55; color: #14284b; background: #fff; border: 2px solid #14284b; border-radius: 6px; padding: 5px 9px; pointer-events: none; white-space: nowrap; }
+.tr-ctl { position: absolute; right: 10px; top: 10px; }
+.tr-ctl button { display: block; width: 34px; height: 34px; margin-bottom: 5px; border: 2px solid #14284b; border-radius: 6px; background: #fff; font-size: 18px; font-weight: bold; line-height: 1; cursor: pointer; color: #14284b; padding: 0; }
+.tr-ctl button:hover { background: #e4f5fd; }
+
+.foot { color: #4a5a75; font-size: 12px; padding-bottom: 20px; }
+
+/* ---------- 窄屏 ---------- */
+@media (max-width: 960px) {
+  .card { width: calc(50% - 12px); }
+  /* 三步改成竖排，箭头跟着朝下 */
+  .steps { display: block; }
+  .step-arrow { width: 44px; margin: 6px auto; -webkit-transform: rotate(90deg); transform: rotate(90deg); }
+}
+@media (max-width: 820px) {
+  .grid2 > .chart { width: 100%; }
+  .top { padding: 12px 14px 10px; }
+  .top h1 { font-size: 22px; display: block; margin-bottom: 2px; }
+  .loader, .tracks, .panel, .foot, .nav { margin-left: 8px; margin-right: 8px; }
+  .panel { padding: 12px 10px; }
+  #p-help { padding: 0; }
+  .hsec { margin-bottom: 16px; }
+  .help h2 { padding: 9px 14px; }
+  .help h2 small { display: block; margin: 0; }
+  .hbody { padding: 12px 12px 14px; }
+  .mapbox { height: 70vh; }
+  .qa { width: calc(100% - 12px); }
+  .kv th, .hs4 .kv th { width: 38%; }
+}
+@media (max-width: 560px) {
+  .card { width: calc(100% - 12px); }
+  .step { padding: 14px 14px 16px; }
+  .stepno { width: 44px; height: 44px; font-size: 26px; line-height: 44px; }
+  .help .step h3 { font-size: 24px; }
+  .step p { font-size: 16px; }
+}

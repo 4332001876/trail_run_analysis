@@ -1,0 +1,21 @@
+# 轨迹原始数据（GPX / TCX），只留本机
+data/
+
+# 脚本生成的图片和网页
+output/
+tmp/
+
+# 老版本画的大图，脚本照常进仓库
+legacy/*.png
+
+# 浏览器测试留下的 Chrome 配置目录
+web/tests/profile-*
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 系统和编辑器杂物
+Thumbs.db
+.DS_Store
+*.log

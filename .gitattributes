@@ -1,0 +1,2 @@
+# 统一用 LF 存、用 LF 取出，避免 Windows 上全文假 diff
+* text=auto eol=lf
